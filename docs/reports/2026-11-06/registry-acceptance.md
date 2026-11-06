@@ -37,7 +37,7 @@ evidence, not evidence that its service works through this VPS.
 | Desired authority / CLI | Actual projection, label-bounded suffixes, exact-to-suffix refusal, partial consent, disable, read-only wide-index CLI | PASS |
 | Native AGH suffix / exceptions | AGH v0.107.80, actual compiler output, 18 names × A/AAAA/SVCB/HTTPS; owned zones, lookalikes, deep children, exact and zone exclusions | 72 PASS; cleanup PASS |
 | Overlapping exact and suffix | Native AGH initially emitted duplicate identical A records; minimizing the positive wire union fixed the repeated 72-case run while preserving desired metadata | Fixed and verified |
-| Full unit suite | 88 tests, including native-word-budget and read-only actual-status contracts | PASS |
+| Full unit suite | 89 tests, including native-word-budget, Compose literal-dollar labels and read-only actual-status contracts | PASS |
 | Actual Traefik / HAProxy suffix routing | 33 checks: public-CA origin TLS through edge and direct relay, actual-SNI own HTTPS, selected A/AAAA/SVCB/HTTPS, excluded names and label-boundary lookalikes | PASS; cleanup PASS |
 | Bounded policy scale | Native HAProxy syntax in dynamic and fixed-origin modes and observed Traefik TCP routing for 2048 exact patterns; edge memory 19.21 MiB under its 128 MiB limit | PASS parsing/resource smoke; traffic capacity not claimed |
 | Native actual status | Read-only production run found the mounted five-host generation and correctly reported four desired-versus-actual discrepancies | PASS for drift detection; matching state after apply still pending |
@@ -89,6 +89,14 @@ retained as partial. Other source roots stay pending. Generic Google/Microsoft
 vendor bans from the first exact-only experiment were removed: explicit service
 selection, own-zone exclusions and destination-IP guards own that boundary.
 This desired edit alone does not apply the new policy.
+
+The first authorized production update failed the final native routing-label
+comparison and automatically restored the mounted five-host generation and its
+native rules. Restore readback passed. The verifier had compared Compose's `$$`
+regex escape to Docker's literal `$`; it now compares the native representation.
+The source artifact comparison remains exact. A suffix-bundle regression also
+rejects an actual changed regex, rather than relaxing route validation.
+Successful application of the corrected operator is still pending.
 
 ## Automation boundary
 

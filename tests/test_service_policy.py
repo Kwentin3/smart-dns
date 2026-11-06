@@ -135,7 +135,7 @@ class ServicePolicyTests(unittest.TestCase):
              "State": {"Running": True, "StartedAt": "unchanged-dns"},
              "NetworkSettings": {"Networks": {"dns": {"IPAddress": "172.20.0.2"}},
                                  "Ports": {"3000/tcp": [{"HostIp": "127.0.0.1", "HostPort": "13000"}]}}},
-            {"Id": "relay-fixture", "Config": {"Image": relay["image"], "Labels": {**relay["labels"], "com.docker.compose.project": project, "com.docker.compose.service": "relay"}},
+            {"Id": "relay-fixture", "Config": {"Image": relay["image"], "Labels": {**{key: value.replace("$$", "$") for key, value in relay["labels"].items()}, "com.docker.compose.project": project, "com.docker.compose.service": "relay"}},
              "Image": "sha256:fixture-image", "State": {"Running": True, "StartedAt": "unchanged-relay"},
              "Mounts": [{"Source": str((directory / source).resolve()), "Destination": target, "RW": False}
                         for source, target, mode in (volume.split(":") for volume in relay["volumes"])]},
@@ -175,6 +175,25 @@ class ServicePolicyTests(unittest.TestCase):
         self.assertEqual({path: path.read_bytes() for path in self.root.rglob("*") if path.is_file()}, before)
         for value in (kwargs["admin_password"], self.settings["client_ids"][0], self.settings["admin_password_hash"]):
             self.assertNotIn(value, json.dumps(result))
+
+    def test_suffix_native_docker_dollar_interpolation_matches_but_wrong_regex_drifts(self):
+        catalog = copy.deepcopy(self.catalog)
+        catalog["domain_policy"] = "exact-and-suffix"
+        catalog["services"][0]["domain_suffixes"] = ["openai.com"]
+        directory = self.bundle("suffix-status", catalog)
+        kwargs, _, records, _, _ = self.status_boundaries(directory)
+        key = "traefik.tcp.routers.sd-relay.rule"
+        raw_rule = json.loads((directory / "compose.lab.json").read_text(encoding="utf-8"))["services"]["relay"]["labels"][key]
+        native_rule = records[1]["Config"]["Labels"][key]
+        self.assertIn("HostSNIRegexp", raw_rule)
+        self.assertIn("$$", raw_rule)
+        self.assertNotIn("$$", native_rule)
+        self.assertEqual(native_rule, raw_rule.replace("$$", "$"))
+        self.assertEqual(read_status(self.settings, catalog, **kwargs)["status"], "matches")
+        records[1]["Config"]["Labels"][key] = native_rule.replace("openai", "unapproved")
+        result = read_status(self.settings, catalog, **kwargs)
+        self.assertEqual(result["status"], "drift")
+        self.assertIn("relay-routing-label-drift", result["findings"])
 
     def test_status_ignores_stale_success_receipt_when_native_rules_drift(self):
         kwargs, live, _, _, _ = self.status_boundaries()

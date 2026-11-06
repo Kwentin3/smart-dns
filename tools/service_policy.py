@@ -80,7 +80,10 @@ def relay_findings(current, expected, directory, manifest, image_id):
     if current["Image"] != image_id:
         findings.append("relay-image-identity-drift")
     labels = current["Config"]["Labels"]
-    if {k: v for k, v in labels.items() if k.startswith("traefik.")} != {k: v for k, v in expected["labels"].items() if k.startswith("traefik.")}:
+    # Renderer labels contain Compose's $$ escape; Docker stores the literal $.
+    expected_labels = {k: v.replace("$$", "$") if isinstance(v, str) else v
+                       for k, v in expected["labels"].items() if k.startswith("traefik.")}
+    if {k: v for k, v in labels.items() if k.startswith("traefik.")} != expected_labels:
         findings.append("relay-routing-label-drift")
     for volume in expected["volumes"]:
         source, target, mode = volume.split(":")
