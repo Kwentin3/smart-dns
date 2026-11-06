@@ -1,0 +1,9 @@
+{
+  "doh_host": "dns.example.net",
+  "relay_ipv4": "192.0.2.10",
+  "client_ids": ["replace-with-at-least-32-random-lowercase-hex-chars"],
+  "own_zones": ["example.net"],
+  "own_public_ipv4": [],
+  "upstream_dns": ["https://dns.quad9.net/dns-query"],
+  "bootstrap_dns": ["9.9.9.9"]
+}

@@ -1,0 +1,44 @@
+[
+  {
+    "check": "anonymous",
+    "status": "PASS",
+    "http": 200,
+    "dns_rcode": "REFUSED",
+    "answer_count": 0
+  },
+  {
+    "check": "unknown-client",
+    "status": "PASS",
+    "http": 200,
+    "dns_rcode": "REFUSED",
+    "answer_count": 0
+  },
+  {
+    "check": "rewrite-A-and-empty-AAAA-SVCB-HTTPS",
+    "domain": "chatgpt.com",
+    "status": "PASS"
+  },
+  {
+    "check": "rewrite-A-and-empty-AAAA-SVCB-HTTPS",
+    "domain": "claude.ai",
+    "status": "PASS"
+  },
+  {
+    "check": "direct-unmodified",
+    "domain": "ordinary.example.net",
+    "status": "PASS"
+  },
+  {
+    "check": "direct-unmodified",
+    "domain": "sub.chatgpt.com",
+    "status": "PASS"
+  },
+  {
+    "check": "plain-DNS-UDP-unauthorized-denied",
+    "status": "PASS"
+  },
+  {
+    "check": "plain-DNS-TCP-unauthorized-denied",
+    "status": "PASS"
+  }
+]
