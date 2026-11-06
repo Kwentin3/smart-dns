@@ -16,9 +16,12 @@ if ss -lntH '( sport = :18443 or sport = :18444 )' | grep -q .; then
 fi
 python3 - <<'PY'
 import json, pathlib, secrets, socket
-from tools.render import approved_rules, public_v4
+from tools.render import catalog_rules, public_v4
 p=pathlib.Path('.local')
-rules=approved_rules(json.loads(pathlib.Path('rules/pilot.json').read_text()))
+registry_path=pathlib.Path('rules/registry.json')
+registry=json.loads(registry_path.read_text()) if registry_path.exists() else None
+rules=catalog_rules(json.loads(pathlib.Path('rules/pilot.json').read_text()), registry)
+assert not rules.get('domain_suffixes'), 'fixed-origin lab requires separate suffix acceptance'
 origins={}
 for host in rules['domains']:
     addresses=sorted({row[4][0] for row in socket.getaddrinfo(host,443,socket.AF_INET,socket.SOCK_STREAM)})
@@ -89,9 +92,11 @@ python3 - <<'PY'
 import base64,json,os,pathlib,re,socket,struct,subprocess,sys
 sys.path.insert(0,'tools')
 from probe import management_request,question
-from render import approved_rules
+from render import catalog_rules
 p=pathlib.Path('.local'); s=json.loads((p/'settings.json').read_text()); password=(p/'admin-password').read_text()
-rules=approved_rules(json.loads(pathlib.Path('rules/pilot.json').read_text()))
+registry_path=pathlib.Path('rules/registry.json')
+registry=json.loads(registry_path.read_text()) if registry_path.exists() else None
+rules=catalog_rules(json.loads(pathlib.Path('rules/pilot.json').read_text()), registry)
 status,body=management_request('http://'+os.environ['LAB_DNS_IP']+':3000','/control/filtering/status',s['admin_username'],password)
 assert status==200
 effective=json.loads(body)['user_rules']
@@ -99,7 +104,7 @@ dns_hosts={line.split('|')[1] for line in effective}
 service='smart-dns-issue1-relay-1'
 labels=json.loads(subprocess.check_output(['docker','inspect',service]))[0]['Config']['Labels']
 tcp_hosts=set(re.findall(r'HostSNI\(`([^`]+)`\)',labels['traefik.tcp.routers.sd-relay.rule']))
-hap_hosts=set(re.findall(r'^  acl host_\d+ req\.ssl_sni,lower -m str (\S+)$',pathlib.Path('generated/haproxy.cfg').read_text(),re.M))
+hap_hosts=set(re.findall(r'^  acl policy_allowed req\.ssl_sni,lower -m str (\S+)$',pathlib.Path('generated/haproxy.cfg').read_text(),re.M))
 assert dns_hosts==tcp_hosts==hap_hosts==set(rules['domains'])
 edge=os.environ['LAB_EDGE_ID']
 response=subprocess.run(['docker','exec',edge,'wget','-S','-O','-','http://dns:3000/control/status'],capture_output=True)

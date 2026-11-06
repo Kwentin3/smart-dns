@@ -37,7 +37,7 @@ class CatalogTests(unittest.TestCase):
         dns = artifacts["agh-conf/AdGuardHome.yaml"]["user_rules"]
         dns_hosts = {re.fullmatch(r"\|([^|]+)\|\$.*", rule)[1] for rule in dns}
         haproxy = artifacts["haproxy.cfg"]
-        relay_hosts = set(re.findall(r"^  acl host_\d+ req\.ssl_sni,lower -m str (\S+)$", haproxy, re.MULTILINE))
+        relay_hosts = set(re.findall(r"^  acl policy_allowed req\.ssl_sni,lower -m str (\S+)$", haproxy, re.MULTILINE))
         labels = artifacts["compose.lab.json"]["services"]["relay"]["labels"]
         rule = labels.get("traefik.tcp.routers.sd-relay.rule", "")
         edge_hosts = set(re.findall(r"HostSNI\(`([^`]+)`\)", rule))

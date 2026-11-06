@@ -71,7 +71,7 @@ class DynamicOriginTests(unittest.TestCase):
     def test_dynamic_path_uses_same_exact_host_set_and_all_off_is_safe(self):
         result = self.render()
         dns_hosts = {rule.split("|", 2)[1] for rule in result["agh-conf/AdGuardHome.yaml"]["user_rules"]}
-        hap_hosts = set(re.findall(r"^  acl host_\d+ req\.ssl_sni,lower -m str (\S+)$", result["haproxy.cfg"], re.M))
+        hap_hosts = set(re.findall(r"^  acl policy_allowed req\.ssl_sni,lower -m str (\S+)$", result["haproxy.cfg"], re.M))
         labels = result["compose.lab.json"]["services"]["relay"]["labels"]
         edge_hosts = set(re.findall(r"HostSNI\(`([^`]+)`\)", labels["traefik.tcp.routers.sd-relay.rule"]))
         self.assertEqual(dns_hosts, set(self.rules["domains"]))

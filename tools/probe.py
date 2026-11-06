@@ -9,9 +9,9 @@ import struct
 import urllib.error
 import urllib.request
 if __package__:
-    from .render import approved_rules
+    from .render import ROOT, catalog_rules
 else:
-    from render import approved_rules
+    from render import ROOT, catalog_rules
 import urllib.parse
 
 
@@ -127,6 +127,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--settings", required=True)
     parser.add_argument("--rules", default="rules/pilot.json")
+    parser.add_argument("--registry", type=Path, default=ROOT / "rules/registry.json")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--edge-port", type=int, default=18443)
     parser.add_argument("--relay-port", type=int, default=18444)
@@ -135,7 +136,13 @@ def main():
     parser.add_argument("--check-revocation", action="store_true", help="Temporarily mutate and restore disposable fixture ACL")
     args = parser.parse_args()
     settings = json.load(open(args.settings, encoding="utf-8"))
-    domains = approved_rules(json.load(open(args.rules, encoding="utf-8")))["domains"]
+    registry = json.loads(args.registry.read_text(encoding="utf-8")) if args.registry.exists() else None
+    rules = catalog_rules(json.load(open(args.rules, encoding="utf-8")), registry)
+    if rules.get("domain_suffixes"):
+        parser.error("this exact-host smoke probe does not accept suffix policy; use the native suffix acceptance fixture")
+    domains = rules["domains"]
+    if not domains:
+        parser.error("this smoke probe requires an enabled exact host")
     base = f"https://{args.host}:{args.edge_port}"
     rows = check_dns(base + "/dns-query", settings["doh_host"], settings["client_ids"][0], domains, settings["relay_ipv4"])
     for domain in domains:

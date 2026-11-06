@@ -48,13 +48,15 @@ class RenderContractTests(unittest.TestCase):
 
     def test_checked_in_pilot_and_source_pins(self):
         root = Path(__file__).resolve().parents[1]
-        rules = approved_rules(json.loads((root / "rules/pilot.json").read_text(encoding="utf-8")))
-        compile_config(rules, self.settings, {host: "1.1.1.1" for host in rules["domains"]})
+        from tools.render import catalog_rules
+        rules = catalog_rules(json.loads((root / "rules/pilot.json").read_text(encoding="utf-8")),
+                              json.loads((root / "rules/registry.json").read_text(encoding="utf-8")))
+        compile_config(rules, {**self.settings, "origin_dns": ["9.9.9.9"]})
         sources = json.loads((root / "rules/sources.json").read_text(encoding="utf-8"))
-        self.assertIn("proposal-only", sources["policy"])
+        self.assertEqual(sum(source["id"] == "metacubex-sing" for source in sources["sources"]), 1)
         for source in sources["sources"]:
             self.assertRegex(source["commit"], r"^[0-9a-f]{40}$")
-            self.assertIn("/blob/" + source["commit"] + "/", source["reference"])
+            self.assertTrue(any("/" + kind + "/" + source["commit"] + "/" in source["reference"] for kind in ("blob", "tree")))
             self.assertIn("license", source)
             self.assertNotEqual(source["use"], "import")
 
@@ -65,7 +67,7 @@ class RenderContractTests(unittest.TestCase):
         self.assertTrue(all(parsed_dns), dns_rules)
         dns_hosts = {match[1] for match in parsed_dns}
         haproxy = artifacts["haproxy.cfg"]
-        relay_hosts = set(re.findall(r"^  acl host_\d+ req\.ssl_sni,lower -m str (\S+)$", haproxy, re.MULTILINE))
+        relay_hosts = set(re.findall(r"^  acl policy_allowed req\.ssl_sni,lower -m str (\S+)$", haproxy, re.MULTILINE))
         tcp_rule = artifacts["compose.lab.json"]["services"]["relay"]["labels"]["traefik.tcp.routers.sd-relay.rule"]
         edge_hosts = set(re.findall(r"HostSNI\(`([^`]+)`\)", tcp_rule))
         expected = set(self.rules["domains"])
@@ -262,7 +264,7 @@ class RenderContractTests(unittest.TestCase):
             compile_config(self.rules, {**self.settings, "own_public_ipv4": ["1.1.1.1"]}, self.origins)
 
     def test_rejects_unsorted_duplicate_or_oversized_domains(self):
-        for domains in [["claude.ai", "chatgpt.com"], ["chatgpt.com", "chatgpt.com"], sorted(f"host{i:02d}.example.org" for i in range(21))]:
+        for domains in [["claude.ai", "chatgpt.com"], ["chatgpt.com", "chatgpt.com"], sorted(f"host{i:04d}.example.org" for i in range(2049))]:
             with self.subTest(domains=domains):
                 rules = {**self.rules, "domains": domains}
                 with self.assertRaises(ValueError):

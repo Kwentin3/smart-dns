@@ -1,8 +1,21 @@
 {
   "schema_version": 1,
   "reviewed_on": "2026-11-06",
-  "policy": "proposal-only; never import or deploy upstream lists automatically",
+  "policy": "upstream facts are proposed through Git; active routing stays within explicit local approvals; source failure preserves accepted state",
   "sources": [
+    {
+      "id": "metacubex-sing",
+      "repository": "https://github.com/MetaCubeX/meta-rules-dat",
+      "branch": "sing",
+      "commit": "7da04853058c4a8858f339b266353fc905ef4eb4",
+      "commit_role": "bootstrap reference; current accepted snapshot pin is rules/registry.json source.commit",
+      "paths": ["geo/geosite/*.json"],
+      "reference": "https://github.com/MetaCubeX/meta-rules-dat/tree/7da04853058c4a8858f339b266353fc905ef4eb4/geo/geosite",
+      "license": "GPL-3.0",
+      "license_reference": "https://github.com/MetaCubeX/meta-rules-dat/blob/4178770badecb1b349fbcd62c737e0d7a2079729/LICENSE",
+      "format": "upstream-generated Sing-box JSON v2; exact and suffix stay distinct; unsupported predicates remain visible",
+      "use": "active discovery source; source membership is not routing authorization or proof of geoblocking"
+    },
     {
       "id": "v2fly-service-catalog",
       "repository": "https://github.com/v2fly/domain-list-community",
@@ -12,7 +25,7 @@
       "license": "MIT",
       "license_reference": "https://github.com/v2fly/domain-list-community/blob/16fd8005d390470e8523745c9fa631c9e767cc61/LICENSE",
       "format": "geosite typed rules; bare/domain suffix, full exact, attributes, include, regexp, keyword",
-      "use": "proposal-source; no automatic import or activation"
+      "use": "historical discovery reference; superseded for collection by upstream-generated JSON"
     },
     {
       "id": "no-russia-hosts",

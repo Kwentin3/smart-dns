@@ -257,9 +257,63 @@ bootstrap input не используется для восстановлени�
 
 Независимое review технического rollout — PASS.
 [Production evidence и ограничения](reports/2026-11-06/production-pilot.md).
-Обязательный остаток до product DONE: реальная работа системного DoT на телефоне
-при home→mobile и DoH роутера, ChatGPT login/message/file/CDN/reopen, обычный сайт
-напрямую. Обе действующие строки подключения уже выданы владельцу в private chat;
-в Git они не публикуются. Ожидается результат практического теста. Нового допуска
-на согласованный rollout не требуется; следующий шаг — разобрать результат либо
-конкретную ошибку устройства/приложения. Полный GOAL не закрыт.
+Обязательный остаток до product DONE включает и управление реестром, и реальную
+работу устройств/сервисов. Предыдущее сведение остатка только к пользовательскому
+тесту было ошибочным; владелец явно напомнил об исходной продуктовой цели.
+
+- Расширяемый каталог геосервисов на готовом источнике, а не ограничение двумя
+  вручную заданными сервисами/пятью hosts. Полнота всего интернета не обещается;
+  включение выбранного сервиса должно учитывать его необходимые домены.
+- Действующее автоматическое получение изменений реестра. На момент этого
+  уточнения downloader был ограничен двумя source files, а workflow находился в
+  незамерженном PR и по расписанию не работал. Новый срез ниже заменяет downloader;
+  artifact с diff сам по себе не является работающим обновлением каталога.
+- Безопасный путь обновления одобренных правил и предложения новых scopes с
+  понятным результатом/активным состоянием/rollback. Текущий native resolver
+  автоматически обновляет IP уже разрешённых hosts, но не перечень доменов.
+- Приёмка системного DoT home→mobile и DoH роутера, ChatGPT login/message/file/
+  CDN/reopen и обычного сайта напрямую. Обе строки уже выданы в private chat;
+  в Git они не публикуются, результат практического теста пока не получен.
+
+Нового допуска на согласованный rollout не требуется. Работа над реестром и его
+автоматизацией может продолжаться независимо от ожидания теста устройств.
+Полный GOAL не закрыт.
+
+### Следующий срез: реестр и действующая автоматизация
+
+Выбран готовый generated Sing-box JSON каталог MetaCubeX/meta-rules-dat (`sing`),
+а не новый парсер Geosite. Проверенный immutable pin содержит 2019 списков:
+это сервисы, категории и attribute-варианты, не доказательство 2019 геосервисов.
+Source owner задаёт exact/suffix и raw unsupported правила; включение и допустимые
+границы остаются у локального каталога. Неподдержанные regex/compound predicates
+явно показываются, а не расширяют маршрут и не пропадают молча.
+
+Границы: upstream JSON → `rules/registry.json` (accepted source snapshot/index),
+локальные selection/approved scope/manual overrides → `rules/pilot.json`,
+производная native policy → прежние AGH/Traefik/HAProxy. Live ACL/admin остаются
+у AGH. Новый source snapshot не разрешает сам по себе новые roots/scopes.
+
+Последовательность: готовый широкий index + выборочные definitions; projection
+одобренных scopes с native suffix/exclusions; единый GitHub Actions scheduler и
+видимые proposal PR; затем согласованное применение принятой политики с actual
+readback/wire/rollback. Проверенные source изменения должны попасть в default
+branch и быть запущены там, иначе расписание не считается работающим. Вторая
+подсистема source downloading на VPS не создаётся.
+
+Native AGH experiment уже подтвердил 72 suffix/exclusion DNS cases и cleanup.
+Дополнительная проверка выявила duplicate A при overlapping exact+suffix:
+исправлен минимизацией wire patterns; повторный native прогон прошёл 72 случая.
+Полный native suffix путь принят на Linux: 33 route/DNS/exclusion checks,
+native HA syntax в обоих origin modes и Traefik TCP routing для 2048 patterns.
+Найден и исправлен native HA word-limit defect; повторные checks и cleanup PASS.
+
+Проверяемый результат текущего среза ведётся в
+[registry acceptance](reports/2026-11-06/registry-acceptance.md): широкий accepted
+index, selected definitions, CLI/projection и единый ежедневный proposal workflow.
+Прежние exact smoke consumers теперь читают ту же projection и явно отказываются
+от suffix policy. Полное product DONE требует ещё desired→actual readback рядом с
+выбранными сервисами, доставки workflow в default branch и реальной приёмки
+устройств/основных функций. Mixed-case SNI admission через оба hop доказан отдельно;
+TLS timeout воспроизведён прямым запросом к тому же origin IP и имеет неизвестную
+внешнюю причину. Обычные lowercase подключения проходят. Production пока остаётся
+на пяти exact hosts; новый status-only правильно показывает desired/actual drift.

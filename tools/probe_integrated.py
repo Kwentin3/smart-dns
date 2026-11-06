@@ -10,7 +10,7 @@ import urllib.parse
 
 from probe import management_request, question, tls_origin
 from probe_dot import assert_answer, dot_query
-from render import ROOT, approved_rules
+from render import ROOT, catalog_rules
 
 
 class LabHTTPSConnection(http.client.HTTPSConnection):
@@ -47,7 +47,11 @@ def run(settings, ca, management_base, password):
     router_id, phone_id = settings["client_ids"][:2]
     unknown_id = "c" * 32
     assert unknown_id not in settings["client_ids"], "unknown fixture ID is already admitted"
-    domains = approved_rules(json.loads((ROOT / "rules/pilot.json").read_text(encoding="utf-8")))["domains"]
+    registry_path = ROOT / "rules/registry.json"
+    registry = json.loads(registry_path.read_text(encoding="utf-8")) if registry_path.exists() else None
+    rules = catalog_rules(json.loads((ROOT / "rules/pilot.json").read_text(encoding="utf-8")), registry)
+    assert not rules.get("domain_suffixes"), "exact-host integrated smoke requires separate native suffix acceptance"
+    domains = rules["domains"]
     assert domains, "integrated probe requires an enabled pilot service"
     context = ssl.create_default_context(cafile=str(ca))
     assert context.check_hostname and context.verify_mode == ssl.CERT_REQUIRED

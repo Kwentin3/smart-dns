@@ -1,13 +1,17 @@
 """Validate actual generated bundles before any native apply is attempted."""
 import copy
+import contextlib
 import hashlib
+import io
 import json
 from pathlib import Path
 import tempfile
 import unittest
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from tools.render import approved_rules, compile_config, write_new
-from tools.service_policy import PolicyError, validate_candidate
+from tools.service_policy import PolicyError, read_status, validate_candidate
 
 
 class ServicePolicyTests(unittest.TestCase):
@@ -119,6 +123,175 @@ class ServicePolicyTests(unittest.TestCase):
                 self.candidate = self.bundle("changed-infrastructure-" + str(index), self.changed, settings)
                 with self.assertRaises(PolicyError):
                     self.validate(settings=settings)
+
+    def status_boundaries(self, directory=None):
+        directory = directory or self.accepted
+        compose = json.loads((directory / "compose.lab.json").read_text(encoding="utf-8"))
+        manifest = json.loads((directory / "snapshot.json").read_text(encoding="utf-8"))
+        project = "smart-dns-status-test"
+        relay = compose["services"]["relay"]
+        records = [
+            {"Id": "dns-fixture", "Config": {"Labels": {"com.docker.compose.project": project, "com.docker.compose.service": "dns"}},
+             "State": {"Running": True, "StartedAt": "unchanged-dns"},
+             "NetworkSettings": {"Networks": {"dns": {"IPAddress": "172.20.0.2"}},
+                                 "Ports": {"3000/tcp": [{"HostIp": "127.0.0.1", "HostPort": "13000"}]}}},
+            {"Id": "relay-fixture", "Config": {"Image": relay["image"], "Labels": {**relay["labels"], "com.docker.compose.project": project, "com.docker.compose.service": "relay"}},
+             "Image": "sha256:fixture-image", "State": {"Running": True, "StartedAt": "unchanged-relay"},
+             "Mounts": [{"Source": str((directory / source).resolve()), "Destination": target, "RW": False}
+                        for source, target, mode in (volume.split(":") for volume in relay["volumes"])]},
+        ]
+        commands, endpoints = [], []
+        live = {"rules": copy.deepcopy(manifest["service_rules"])}
+
+        def docker(*command):
+            commands.append(command)
+            if command[:2] == ("ps", "-aq"):
+                self.assertIn("label=com.docker.compose.project=" + project, command)
+                return "dns-fixture relay-fixture"
+            if command == ("inspect", "dns-fixture", "relay-fixture"):
+                return json.dumps(records)
+            if command == ("image", "inspect", relay["image"]):
+                return json.dumps([{"Id": "sha256:fixture-image"}])
+            self.fail("status attempted a command outside native read boundaries")
+
+        def api(endpoint):
+            endpoints.append(endpoint)
+            self.assertEqual(endpoint, "/control/filtering/status")
+            return 200, json.dumps({"user_rules": live["rules"]}).encode()
+
+        kwargs = {"project": project, "management_base": "http://127.0.0.1:13000", "admin_username": "labadmin",
+                  "admin_password": "fixture-private-admin-secret", "docker_read": docker, "api_read": api}
+        return kwargs, live, records, commands, endpoints
+
+    def test_status_binds_actual_generation_to_owned_mount_without_writes_or_secrets(self):
+        kwargs, _, _, commands, endpoints = self.status_boundaries()
+        before = {path: path.read_bytes() for path in self.root.rglob("*") if path.is_file()}
+        result = read_status(self.settings, self.catalog, **kwargs)
+        self.assertEqual(result["status"], "matches")
+        self.assertEqual(result["actual_generation_source"], "owned-relay-bind-mount")
+        self.assertEqual(result["actual_generation"], json.loads((self.accepted / "snapshot.json").read_text())["sha256"])
+        self.assertTrue(commands)
+        self.assertEqual(endpoints, ["/control/filtering/status", "/control/filtering/status"])
+        self.assertEqual({path: path.read_bytes() for path in self.root.rglob("*") if path.is_file()}, before)
+        for value in (kwargs["admin_password"], self.settings["client_ids"][0], self.settings["admin_password_hash"]):
+            self.assertNotIn(value, json.dumps(result))
+
+    def test_status_ignores_stale_success_receipt_when_native_rules_drift(self):
+        kwargs, live, _, _, _ = self.status_boundaries()
+        (self.root / "last-success.json").write_text(json.dumps({"status": "applied-and-readback"}), encoding="utf-8")
+        live["rules"] = []
+        result = read_status(self.settings, self.catalog, **kwargs)
+        self.assertEqual(result["status"], "drift")
+        self.assertIn("native-rules-differ-from-mounted-generation", result["findings"])
+        self.assertIn("native-rules-differ-from-desired", result["findings"])
+
+    def test_status_detects_actual_mounted_bytes_change_with_unchanged_receipt(self):
+        kwargs, _, _, _, _ = self.status_boundaries()
+        path = self.accepted / "denied-v4.txt"
+        original = path.read_text(encoding="utf-8")
+        self.assertIn("127.0.0.0/8", original)
+        path.write_text(original.replace("127.0.0.0/8\n", ""), encoding="utf-8", newline="\n")
+        result = read_status(self.settings, self.catalog, **kwargs)
+        self.assertEqual(result["status"], "drift")
+        self.assertIn("relay-mounted-bytes-drift", result["findings"])
+
+    def test_status_reports_desired_and_actual_services_separately(self):
+        kwargs, _, _, _, _ = self.status_boundaries()
+        result = read_status(self.settings, self.changed, **kwargs)
+        self.assertEqual(result["status"], "drift")
+        self.assertIn("desired-generation-not-applied", result["findings"])
+        self.assertIs(result["desired_services"][0]["enabled"], False)
+        self.assertIs(result["actual_services"][0]["enabled"], True)
+
+    def test_status_final_relay_stop_or_unhealthy_without_restart_is_drift(self):
+        for change in ({"Running": False}, {"Health": {"Status": "unhealthy"}}):
+            with self.subTest(change=change):
+                kwargs, _, records, _, _ = self.status_boundaries()
+                original = kwargs["docker_read"]
+                inspections = []
+                def changed_native_observation(*command):
+                    if command[:1] == ("inspect",):
+                        inspections.append(command)
+                        if len(inspections) == 2:
+                            records[1]["State"].update(change)
+                    return original(*command)
+                kwargs["docker_read"] = changed_native_observation
+                result = read_status(self.settings, self.catalog, **kwargs)
+                self.assertEqual(result["status"], "drift")
+                self.assertIn("relay-not-ready", result["findings"])
+                self.assertNotIn("native-state-changed-during-status", result["findings"])
+
+    def test_status_final_routing_label_change_without_restart_is_drift(self):
+        kwargs, _, records, _, _ = self.status_boundaries()
+        original = kwargs["docker_read"]
+        inspections = []
+        def changed_native_observation(*command):
+            if command[:1] == ("inspect",):
+                inspections.append(command)
+                if len(inspections) == 2:
+                    records[1]["Config"]["Labels"]["traefik.enable"] = "false"
+            return original(*command)
+        kwargs["docker_read"] = changed_native_observation
+        result = read_status(self.settings, self.catalog, **kwargs)
+        self.assertEqual(result["status"], "drift")
+        self.assertIn("relay-routing-label-drift", result["findings"])
+        self.assertNotIn("native-state-changed-during-status", result["findings"])
+
+    def test_status_exposes_pending_source_scope_and_partial_coverage(self):
+        from tools.registry import REPOSITORY, normalize_rules
+        kwargs, _, _, _, _ = self.status_boundaries()
+        catalog = copy.deepcopy(self.catalog)
+        catalog["services"][0]["upstream"] = {"source": "metacubex-sing", "list": "openai", "approved_scope": {"exact": [], "suffix": []}}
+        definition = normalize_rules({"version": 2, "rules": [{"domain_suffix": ["openai.com"], "domain_regex": "^unsupported$"}]})
+        definition["source_blob"] = "b" * 40
+        registry = {"schema_version": 1, "source": {"repository": REPOSITORY, "commit": "a" * 40},
+                    "index": {"openai": {"blob_sha": "b" * 40}}, "definitions": {"openai": definition}}
+        result = read_status(self.settings, catalog, registry=registry, **kwargs)
+        self.assertEqual(result["desired_services"][0]["pending_scope"], [{"kind": "suffix", "name": "openai.com"}])
+        self.assertTrue(result["desired_services"][0]["partial"])
+
+    def test_status_rejects_management_endpoint_not_owned_by_dns_before_http(self):
+        kwargs, _, _, _, endpoints = self.status_boundaries()
+        kwargs["management_base"] = "http://127.0.0.1:9999"
+        with self.assertRaises(PolicyError):
+            read_status(self.settings, self.catalog, **kwargs)
+        self.assertEqual(endpoints, [])
+
+    def test_status_cli_needs_no_candidate_output_or_linux_mutation_lock(self):
+        from tools import service_policy
+        kwargs, live, _, commands, _ = self.status_boundaries()
+        settings, catalog, password = (self.root / name for name in ("settings.json", "catalog.json", "admin-password"))
+        settings.write_text(json.dumps(self.settings), encoding="utf-8")
+        catalog.write_text(json.dumps(self.catalog), encoding="utf-8")
+        password.write_text(kwargs["admin_password"], encoding="utf-8")
+        before = {path: path.read_bytes() for path in self.root.rglob("*") if path.is_file()}
+
+        def native_docker(command, **options):
+            self.assertEqual(command[0], "docker")
+            self.assertLessEqual(options["timeout"], 5)
+            return SimpleNamespace(returncode=0, stdout=kwargs["docker_read"](*command[1:]))
+
+        class Response(io.BytesIO):
+            status = 200
+
+        def native_http(request, **options):
+            self.assertEqual(request.get_method(), "GET")
+            self.assertEqual(request.full_url, kwargs["management_base"] + "/control/filtering/status")
+            self.assertLessEqual(options["timeout"], 5)
+            return Response(json.dumps({"user_rules": live["rules"]}).encode())
+
+        argv = ["service_policy", "--lab-only", "--status-only", "--settings", str(settings), "--rules", str(catalog),
+                "--registry", str(self.root / "absent-registry.json"), "--project", kwargs["project"],
+                "--management-base", kwargs["management_base"], "--admin-username", "labadmin", "--admin-password-file", str(password)]
+        output = io.StringIO()
+        with patch("sys.argv", argv), patch.object(service_policy.subprocess, "run", side_effect=native_docker), \
+             patch.object(service_policy.urllib.request, "build_opener") as opener, contextlib.redirect_stdout(output):
+            opener.return_value.open.side_effect = native_http
+            self.assertEqual(service_policy.main(), 0)
+        self.assertEqual(json.loads(output.getvalue())["status"], "matches")
+        self.assertNotIn(kwargs["admin_password"], output.getvalue())
+        self.assertTrue(commands)
+        self.assertEqual({path: path.read_bytes() for path in self.root.rglob("*") if path.is_file()}, before)
 
 
 if __name__ == "__main__":

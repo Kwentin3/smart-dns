@@ -42,13 +42,14 @@ def public_v4(value):
 
 
 def approved_rules(catalog):
-    """One service-policy owner. Project desired exact hosts; never claim applied."""
-    if catalog.get("domain_policy") != "exact":
-        raise ValueError("only explicitly approved exact domains are supported")
+    """Project locally approved exact names and typed suffix roots, never regex."""
+    if catalog.get("domain_policy") not in ("exact", "exact-and-suffix"):
+        raise ValueError("only explicitly approved exact names and suffix roots are supported")
     services = catalog["services"]
     if not isinstance(services, list) or not services:
         raise ValueError("catalog requires at least one visible service")
     seen, all_domains, active, states = set(), set(), set(), []
+    all_suffixes, active_suffixes = set(), set()
     for service in services:
         service_id = service["id"]
         if not isinstance(service_id, str) or not re.fullmatch(r"[a-z][a-z0-9-]{0,31}", service_id) or service_id in seen:
@@ -58,40 +59,74 @@ def approved_rules(catalog):
             raise ValueError("service requires a name and an explicit boolean enabled flag")
         if not isinstance(service["reason"], str) or not service["reason"].strip():
             raise ValueError("service state requires an explanation")
-        domains = service["domains"]
-        if not isinstance(domains, list) or domains != sorted(set(domains)):
-            raise ValueError("service domains must be a unique sorted list")
-        if service["enabled"] and not domains:
-            raise ValueError("an enabled service requires at least one approved domain")
-        for domain in domains:
+        domains, suffixes = service.get("domains", []), service.get("domain_suffixes", [])
+        for values in (domains, suffixes):
+            if not isinstance(values, list) or any(not isinstance(value, str) for value in values) or values != sorted(set(values)):
+                raise ValueError("service domain fields must be unique sorted lists")
+        if service["enabled"] and not (domains or suffixes):
+            raise ValueError("an enabled service requires an approved exact name or suffix root")
+        for domain in domains + suffixes:
             hostname(domain)
         all_domains.update(domains)
+        all_suffixes.update(suffixes)
         if service["enabled"]:
             active.update(domains)
+            active_suffixes.update(suffixes)
         states.append({"id": service_id, "name": service["name"], "enabled": service["enabled"], "reason": service["reason"], "domains": domains, "discovery_source": service.get("source"), "source_path": service.get("source_path")})
-        if "references" in service:
-            states[-1]["references"] = service["references"]
+        if "domain_suffixes" in service:
+            states[-1]["domain_suffixes"] = suffixes
+        for key in ("references", "upstream", "upstream_state"):
+            if key in service:
+                states[-1][key] = service[key]
     excluded = catalog["excluded_domains"]
-    if not isinstance(excluded, dict) or not set(excluded) <= all_domains:
-        raise ValueError("exclusions must reference catalog domains")
+    if not isinstance(excluded, dict):
+        raise ValueError("exclusions must reference catalog names or suffix descendants")
+    for domain in excluded:
+        hostname(domain)
+        if domain not in all_domains and not any(domain == root or domain.endswith("." + root) for root in all_suffixes):
+            raise ValueError("exclusions must reference catalog names or suffix descendants")
     if any(not isinstance(reason, str) or not reason.strip() for reason in excluded.values()):
         raise ValueError("each excluded domain requires an explanation")
-    return {"revision": catalog["revision"], "domains": sorted(active - set(excluded)), "excluded_zones": catalog["excluded_zones"], "service_states": states, "excluded_domains": excluded}
+    projected = {"revision": catalog["revision"], "domains": sorted(active - set(excluded)), "excluded_zones": catalog["excluded_zones"], "service_states": states, "excluded_domains": excluded}
+    if any("domain_suffixes" in service for service in services):
+        projected["domain_suffixes"] = sorted(active_suffixes)
+    return projected
 
 
 def compile_config(rules, settings, origins=None):
     domains = rules["domains"]
-    if len(domains) > 20 or domains != sorted(set(domains)):
-        raise ValueError("pilot requires 0..20 unique sorted exact domains")
+    suffixes = rules.get("domain_suffixes", [])
+    for values in (domains, suffixes):
+        if not isinstance(values, list) or any(not isinstance(value, str) for value in values) or values != sorted(set(values)):
+            raise ValueError("policy requires unique sorted exact names and suffix roots")
     own = [hostname(z) for z in settings["own_zones"]]
     doh_host = hostname(settings["doh_host"])
     blocked = rules["excluded_zones"] + own + [doh_host]
-    for d in domains:
+    for d in domains + suffixes:
         hostname(d)
         if any(d == zone or d.endswith("." + zone) for zone in blocked):
             raise ValueError("excluded or own domain")
+    # An approved broad suffix can contain a narrower own/excluded zone. Keep
+    # that zone native and direct in all three consumers rather than widening it.
+    zone_exceptions = sorted({zone for zone in blocked if any(zone.endswith("." + root) for root in suffixes)})
+    exact_exceptions = sorted({name for name in rules.get("excluded_domains", {})
+                               if name in domains or any(name == root or name.endswith("." + root) for root in suffixes)})
+    for name in zone_exceptions + exact_exceptions:
+        hostname(name)
+    limit = settings.get("max_policy_entries", 2048)
+    if type(limit) is not int or limit < 1 or len(domains) + len(suffixes) + len(zone_exceptions) + len(exact_exceptions) > limit:
+        raise ValueError("policy exceeds its explicit pattern budget")
+    # AGH combines matching rewrite records: redundant exact/suffix positives
+    # produce duplicate A answers. Project one minimal union in every consumer,
+    # retaining the approved typed inputs separately from native wire patterns.
+    desired_domains, desired_suffixes = domains, suffixes
+    suffixes = [root for root in suffixes if not any(root.endswith("." + parent) for parent in suffixes)]
+    domains = [name for name in domains if not any(name == root or name.endswith("." + root) for root in suffixes)]
+    wire_scope = {"domains": domains, "domain_suffixes": suffixes}
     relay_ip = str(ipaddress.IPv4Address(settings["relay_ipv4"]))
     dynamic_origin = "origin_dns" in settings
+    if suffixes and not dynamic_origin:
+        raise ValueError("suffix routing requires independent dynamic origin DNS")
     origins = {} if origins is None else origins
     if not isinstance(origins, dict):
         raise ValueError("origins must be a domain-to-IPv4 object")
@@ -126,6 +161,9 @@ def compile_config(rules, settings, origins=None):
     if not re.fullmatch(r"\$2[aby]\$(?:0[4-9]|[12][0-9]|3[01])\$[./A-Za-z0-9]{53}", password_hash):
         raise ValueError("admin password must be a bcrypt hash")
     fingerprint_inputs = {"rules": rules, "origins": origins}
+    if "domain_suffixes" in rules or zone_exceptions or exact_exceptions:
+        fingerprint_inputs["policy_exclusions"] = {"domains": exact_exceptions, "domain_suffixes": zone_exceptions}
+        fingerprint_inputs["wire_scope"] = wire_scope
     if dynamic_origin:
         fingerprint_inputs.update(origin_mode="dynamic-ipv4", origin_dns=origin_dns,
                                   denied_v4=list(DENIED_ORIGIN_V4) + sorted(forbidden_ips))
@@ -134,6 +172,11 @@ def compile_config(rules, settings, origins=None):
     for d in domains:
         user_rules += [f"|{d}|$dnstype=A,dnsrewrite=NOERROR;A;{relay_ip}",
                        f"|{d}|$dnstype=AAAA|HTTPS|SVCB,dnsrewrite=NOERROR;;"]
+    for root in suffixes:
+        user_rules += [f"||{root}^$dnstype=A,dnsrewrite=NOERROR;A;{relay_ip}",
+                       f"||{root}^$dnstype=AAAA|HTTPS|SVCB,dnsrewrite=NOERROR;;"]
+    user_rules += [f"@@|{name}|$dnsrewrite" for name in exact_exceptions]
+    user_rules += [f"@@||{root}^$dnsrewrite" for root in zone_exceptions]
     agh = {
         "http": {"address": "0.0.0.0:3000", "doh": {"insecure_enabled": True}},
         "users": [{"name": admin, "password": password_hash}], "dns": {"bind_hosts": ["0.0.0.0"], "port": 5353,
@@ -162,12 +205,24 @@ def compile_config(rules, settings, origins=None):
     if dynamic_origin:
         hap += ["  dns-accept-family ipv4"]
     hap += ["defaults", "  mode tcp", "  log global", "  option tcplog", "  timeout connect 5s", "  timeout client 60s", "  timeout server 60s", "frontend tls_relay", "  bind :8443", "  tcp-request inspect-delay 5s"]
-    for i, d in enumerate(domains):
-        hap += [f"  acl host_{i} req.ssl_sni,lower -m str {d}"]
-    if domains:
+    # Repeated declarations of one native ACL are OR alternatives. Keep the
+    # guard constant-sized: one reference per domain exceeds HA's word limit.
+    for d in domains:
+        hap += [f"  acl policy_allowed req.ssl_sni,lower -m str {d}"]
+    for root in suffixes:
+        hap += [f"  acl policy_allowed req.ssl_sni,lower -m str {root}",
+                f"  acl policy_allowed req.ssl_sni,lower -m end .{root}"]
+    for name in exact_exceptions:
+        hap += [f"  acl policy_excluded req.ssl_sni,lower -m str {name}"]
+    for root in zone_exceptions:
+        hap += [f"  acl policy_excluded req.ssl_sni,lower -m str {root}",
+                f"  acl policy_excluded req.ssl_sni,lower -m end .{root}"]
+    if exact_exceptions or zone_exceptions:
+        hap += ["  tcp-request content reject if { req.ssl_hello_type 1 } policy_excluded"]
+    if domains or suffixes:
         if dynamic_origin:
             hap += ["  tcp-request content reject unless { req.ssl_hello_type 1 }"]
-        hap += ["  tcp-request content reject if { req.ssl_hello_type 1 } !" + " !".join(f"host_{i}" for i in range(len(domains)))]
+        hap += ["  tcp-request content reject if { req.ssl_hello_type 1 } !policy_allowed"]
         if dynamic_origin:
             hap += ["  tcp-request content set-var(sess.host) req.ssl_sni,lower",
                     "  tcp-request content do-resolve(sess.ip,origin_dns,ipv4) var(sess.host)",
@@ -181,11 +236,11 @@ def compile_config(rules, settings, origins=None):
             hap += ["  tcp-request content accept if { req.ssl_hello_type 1 }"]
     else:
         hap += ["  tcp-request content reject"]
-    if dynamic_origin and domains:
+    if dynamic_origin and (domains or suffixes):
         hap += ["  default_backend origin_dynamic", "backend origin_dynamic", "  server checked 0.0.0.0:0"]
     else:
         for i, d in enumerate(domains):
-            hap += [f"  use_backend origin_{i} if host_{i}"]
+            hap += [f"  use_backend origin_{i} if {{ req.ssl_sni,lower -m str {d} }}"]
         hap += ["  default_backend denied"]
     hap += ["backend denied", "  tcp-request content reject"]
     if dynamic_origin:
@@ -219,8 +274,16 @@ def compile_config(rules, settings, origins=None):
         "traefik.http.middlewares.sd-doh-flight.inflightreq.amount": "8",
         "traefik.http.middlewares.sd-doh-flight.inflightreq.sourcecriterion.requesthost": "true",
     })
-    labels_relay = {"traefik.enable": "true", "traefik.tcp.routers.sd-relay.rule": " || ".join(f"HostSNI(`{d}`)" for d in domains), "traefik.tcp.routers.sd-relay.entrypoints": "websecure", "traefik.tcp.routers.sd-relay.tls.passthrough": "true", "traefik.tcp.services.sd-relay.loadbalancer.server.port": "8443"}
-    if not domains:
+    def root_sni(root):
+        escaped = root.replace(".", "\\.")
+        # Compose consumes $$; the native regex must retain its final anchor.
+        return f"(HostSNI(`{root}`) || HostSNIRegexp(`^([a-z0-9-]+\\.)+{escaped}$$`))"
+    relay_rule = " || ".join([f"HostSNI(`{d}`)" for d in domains] + [root_sni(root) for root in suffixes])
+    excluded_sni = [f"HostSNI(`{d}`)" for d in exact_exceptions] + [root_sni(root) for root in zone_exceptions]
+    if excluded_sni:
+        relay_rule = f"({relay_rule}) && !({' || '.join(excluded_sni)})"
+    labels_relay = {"traefik.enable": "true", "traefik.tcp.routers.sd-relay.rule": relay_rule, "traefik.tcp.routers.sd-relay.entrypoints": "websecure", "traefik.tcp.routers.sd-relay.tls.passthrough": "true", "traefik.tcp.services.sd-relay.loadbalancer.server.port": "8443"}
+    if not (domains or suffixes):
         labels_relay = {"traefik.enable": "false"}
     bounded = {"restart": "no", "mem_limit": "128m", "cpus": 0.5, "pids_limit": 100, "logging": {"driver": "json-file", "options": {"max-size": "5m", "max-file": "2"}}, "cap_drop": ["ALL"], "security_opt": ["no-new-privileges:true"]}
     services = {
@@ -236,7 +299,10 @@ def compile_config(rules, settings, origins=None):
         services["dns"]["volumes"].append("${DOT_CERT_DIR:?private TLS directory required}:/certs:ro")
         services["relay"]["networks"] = ["default", "dns"]
         services["relay"]["ports"].append("127.0.0.1:1853:8853")
-    artifacts = {"agh-conf/AdGuardHome.yaml": agh, "haproxy.cfg": "\n".join(hap) + "\n", "compose.lab.json": {"services": services, "networks": {"default": {}, "dns": {}}}, "snapshot.json": {"status": "candidate-not-applied", "sha256": fingerprint, "domains": domains, "desired_services": rules.get("service_states", []), "excluded_domains": rules.get("excluded_domains", {}), "origins": origins, "images": IMAGES}}
+    artifacts = {"agh-conf/AdGuardHome.yaml": agh, "haproxy.cfg": "\n".join(hap) + "\n", "compose.lab.json": {"services": services, "networks": {"default": {}, "dns": {}}}, "snapshot.json": {"status": "candidate-not-applied", "sha256": fingerprint, "domains": desired_domains, "desired_services": rules.get("service_states", []), "excluded_domains": rules.get("excluded_domains", {}), "origins": origins, "images": IMAGES}}
+    if "domain_suffixes" in rules or zone_exceptions or exact_exceptions:
+        artifacts["snapshot.json"].update(domain_suffixes=desired_suffixes, wire_scope=wire_scope,
+            policy_exclusions={"domains": exact_exceptions, "domain_suffixes": zone_exceptions})
     # AGH owns and rewrites its live YAML. Keep only this derived immutable
     # bootstrap identity and service projection outside that mutable directory.
     infrastructure = {key: value for key, value in agh.items() if key != "user_rules"}
@@ -250,6 +316,16 @@ def compile_config(rules, settings, origins=None):
         name: hashlib.sha256(artifacts[name].encode()).hexdigest()
         for name in ("haproxy.cfg", "denied-v4.txt") if name in artifacts}
     return artifacts
+
+
+def catalog_rules(catalog, registry=None):
+    """Composition seam: source membership + local approvals -> native policy."""
+    if any("upstream" in service for service in catalog["services"]):
+        import sys
+        sys.path.insert(0, str(ROOT))
+        from tools.catalog import project_catalog
+        catalog = project_catalog(catalog, registry, hostname)
+    return approved_rules(catalog)
 
 
 def compile_production(rules, settings, origins=None):
@@ -303,11 +379,13 @@ def main():
     parser.add_argument("--origins", type=Path, help="Fixed-mode origin snapshot; omit when settings.origin_dns is configured")
     parser.add_argument("--out", type=Path, default=ROOT / "generated")
     parser.add_argument("--production", action="store_true", help="Prepare the approved two-service representation; never deploy")
+    parser.add_argument("--registry", type=Path, default=ROOT / "rules/registry.json")
     args = parser.parse_args()
     catalog, settings = (json.loads(p.read_text(encoding="utf-8")) for p in (args.rules, args.settings))
     origins = json.loads(args.origins.read_text(encoding="utf-8")) if args.origins is not None else None
     compiler = compile_production if args.production else compile_config
-    artifacts = compiler(approved_rules(catalog), settings, origins)
+    registry = json.loads(args.registry.read_text(encoding="utf-8")) if args.registry.exists() else None
+    artifacts = compiler(catalog_rules(catalog, registry), settings, origins)
     write_new(artifacts, args.out)
     print("Rendered", len(artifacts), "artifacts; no services started")
 

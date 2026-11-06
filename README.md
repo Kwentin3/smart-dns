@@ -3,21 +3,30 @@
 Текущая продуктовая задача — [issue #3](https://github.com/Kwentin3/smart-dns/issues/3):
 [текущее состояние и обязательный остаток](docs/product-goal.md). Private pilot
 развёрнут с отдельным разрешением владельца; [техническая приёмка production](docs/reports/2026-11-06/production-pilot.md)
-завершена. Реальные устройства и функции приложения ещё не приняты.
+завершена. Управление community-каталогом и автоматизация обновлений развиваются;
+расписание ещё не активно до попадания workflow в `main`. Реальные устройства и
+функции приложения ещё не приняты; весь product GOAL не завершён.
 
 Изолированный пилот [issue #1](https://github.com/Kwentin3/smart-dns/issues/1):
 AdGuard Home → точные HostSNI rules Traefik → HAProxy → фиксированный public IPv4.
 В этом историческом baseline production, Hermes и общий Traefik не изменялись.
-Текущие одобренные exact hosts задаёт только [сервисный каталог](rules/pilot.json).
+Локальные предпочтения и границы одобрения задаёт [сервисный каталог](rules/pilot.json),
+а сведения community-источника — [принятый snapshot](rules/registry.json).
 Вход, сообщения, CDN, файлы, повторные
 сессии и устройства целиком пока не приняты; Gemini отложен.
 [Историческая приёмка рефакторинга](docs/refactor.md).
 
 ## Устройство
 
-Один [reviewed список](rules/pilot.json) через `tools/render.py` порождает DNS
-rules, Traefik labels и HAProxy ACL/backends. [Внешние реестры](rules/sources.json)
-дают предложения, без автоматического импорта. Render не обращается в сеть и не
+Один [каталог предпочтений](rules/pilot.json) вместе с [registry snapshot](rules/registry.json)
+через `catalog_rules` и `tools/render.py` порождает DNS rules, Traefik labels и
+HAProxy ACL/backends. Готовый индекс MetaCubeX содержит сервисы, категории и группы;
+в полном индексе не каждая запись означает отдельный геосервис. Определения
+загружаются только для выбранных сервисов. Exact и suffix сохраняют разный смысл;
+новые имена вне локального `approved_scope` и неподдерживаемые predicates остаются
+видимыми кандидатами. Ручные hosts, enabled/reason и исключения не заменяются
+внешним списком. [Источники и лицензии](rules/sources.json) сохраняют provenance.
+Render не обращается в сеть и не
 запускает сервисы. Origins — reviewed numeric public IPv4:443; private/reserved,
 metadata, multicast, IPv6, собственный ingress и provider-service IP отвергаются.
 В fixed-origin режиме runtime DNS/fallback нет.
@@ -39,7 +48,7 @@ Native Traefik middleware сначала задаёт канонический H
 параметры, не доказанный production capacity threshold. AGH `dns.ratelimit:20`
 ограничивает только UDP. DoH-router не пишет access logs; lab field allowlist
 защищает также denied URL, сохраняя журнал соседнего сайта. Production logging
-этим не принят.
+этим не принят; проверка фактического production описана отдельно в его отчёте.
 
 HAProxy сохраняется ради global `maxconn 256` и idle timeouts 60s. Native Traefik
 TCP inFlightConn ограничивает по IP; dialTimeout не заменяет idle timeout.
@@ -48,7 +57,25 @@ TCP inFlightConn ограничивает по IP; dialTimeout не заменя
 ## Воспроизведение
 
 В [сервисном каталоге](rules/pilot.json) меняют `services[].enabled`, причину,
-одобренные exact domains и `excluded_domains`. Это desired state. Renderer
+ручные `domains`/`domain_suffixes`, локальный `upstream.approved_scope` и
+`excluded_domains`. Новое имя вне approved scope требует отдельного review;
+обновлённое membership внутри уже одобренной suffix-границы может проецироваться
+без расширения этой границы. Неподдерживаемые regex/keyword не превращаются в
+разрешение всего сервиса. Для выбора и просмотра есть небольшой CLI:
+
+```sh
+python3 tools/catalog.py list --search spotify
+python3 tools/catalog.py show spotify
+# После просмотра definition: изменить только desired preferences/snapshot.
+python3 tools/catalog.py enable spotify --approve-source-scope --reason 'Reviewed service scope for a separate pilot'
+python3 tools/catalog.py disable spotify --reason 'Pilot paused'
+```
+
+`list` читает принятый индекс. `show`/`enable` могут получить отсутствующее
+определение из публичного источника; executable code источника не запускается.
+Перед включением partial definition требуется осознанное `--accept-literal-only`;
+это не включает его неподдерживаемые predicates. Изменения review/commit в Git
+не равны применённому runtime. Renderer
 создаёт новый candidate; он не применяет его к работающему AGH и не подтверждает
 active state. `settings.client_ids` — только bootstrap: повторная запись полной
 конфигурации может вернуть уже отозванного клиента.
@@ -57,12 +84,17 @@ active state. `settings.client_ids` — только bootstrap: повторна
 
 ```sh
 python3 tools/source_proposals.py
-# .local/source-proposals/latest.json: raw diff + immutable SHA + MIT attribution
+# .local/source-proposals/latest.json: index/rule diffs + pinned candidate + GPL attribution
 ```
 
-Scheduled/manual workflow только сохраняет этот артефакт; расписание требует
-default branch. Новые правила включаются после review. Ошибка fetch сохраняет
-предыдущий proposal и accepted каталог. Ни deploy, ни автоматический импорт не выполняются.
+Ежедневный/manual workflow собирает полный индекс и выбранные определения,
+проверяет candidate и создаёт/обновляет один PR `automation/service-registry`.
+В PR меняется только принятый registry snapshot с provenance и текстом лицензии;
+local preferences и runtime не меняются. Автоматического merge или deploy пока нет.
+Bot PR не запускает независимый PR CI: candidate contracts выполняются в самом
+trusted workflow и так обозначены в отчёте. До merge workflow в default branch
+(`main`) расписание не работает; репозиторию также нужно разрешение Actions на
+создание PR. Ошибка fetch/validation оставляет принятый набор и прежний proposal.
 
 Для уже работающего пилота `tools/service_policy.py --lab-only` (стенд) или
 `--production` (отдельно разрешённое внедрение) выполняет service-only
@@ -73,6 +105,14 @@ accepted bundle, новый render candidate и его исходные settings
 создаётся `tools/render.py --production`: два контейнера, отдельная DNS-сеть,
 native labels текущего edge. Этот флаг сам по себе не даёт разрешения на deploy и
 не меняет общий Traefik. [Приёмка стенда](docs/reports/2026-11-06/product-native-acceptance.md).
+
+У того же оператора есть `--status-only`: с теми же target/settings/rules/registry,
+project и management credentials, но без `--accepted`, `--candidate` и `--out`.
+Он читает actual generation из mounted relay, сверяет native DNS rules, image,
+labels и байты policy с desired; показывает drift, pending scopes и partial
+coverage. Этот режим ничего не применяет и не пишет receipt. `catalog list` ON/OFF
+означает desired selection; актуальность runtime подтверждает именно readback.
+[Новый registry/native срез](docs/reports/2026-11-06/registry-acceptance.md).
 
 Для render/service operation достаточно системного Python 3.9+ (stdlib);
 стендовые проверки выполнялись также на Python 3.11+. Нужен Docker Engine/Compose v2 на разрешённом Linux
@@ -98,6 +138,11 @@ Runner отвергает занятые порты и существующий 
 [Первый acceptance](docs/reports/2026-11-06/acceptance.md) и
 [PR2 follow-up](docs/reports/2026-11-06/review-followup.md) относятся к прежним
 кандидатам и не доказывают результат текущего.
+
+Этот fixed-origin runner и старые smoke probes предназначены для exact-host
+набора: они читают ту же registry projection, а при активных suffix rules явно
+отказываются от запуска. Native suffix acceptance проверяется отдельно; exact
+smoke не выдаётся за приёмку suffix-сервиса или всего community-каталога.
 
 Рендер без запуска требует нового output directory:
 
@@ -134,9 +179,11 @@ ClientID URL, ключи и private evidence.
 
 ## Перед production
 
-Отдельно согласуются private Compose/labels, сертификат, узкая сеть, admin
-credentials, origin snapshot, logging, limits и rollback window. Второй public
-443, catch-all, file provider и restart общего edge не входят в пилот. DNS ClientID
+Первый private rollout отдельно разрешён и выполнен, включая согласованное
+пересоздание общего edge; это не общее разрешение на любые будущие изменения
+Traefik. Новое внедрение требует конкретных private Compose/labels, сертификата,
+сетей, admin credentials, origin policy, logging, limits и rollback window.
+Второй public 443, catch-all и новый file provider не требуются. DNS ClientID
 не защищает public relay от прямого доступа к разрешённым SNI; shared-origin
 domain fronting остаётся ограничением. Product/device приёмка — отдельный этап.
 
