@@ -46,7 +46,7 @@ class RenderContractTests(unittest.TestCase):
         self.assertTrue(all(parsed_dns), dns_rules)
         dns_hosts = {match[1] for match in parsed_dns}
         haproxy = artifacts["haproxy.cfg"]
-        relay_hosts = set(re.findall(r"^  acl host_\d+ req\.ssl_sni -m str (\S+)$", haproxy, re.MULTILINE))
+        relay_hosts = set(re.findall(r"^  acl host_\d+ req\.ssl_sni,lower -m str (\S+)$", haproxy, re.MULTILINE))
         tcp_rule = artifacts["compose.lab.json"]["services"]["relay"]["labels"]["traefik.tcp.routers.sd-relay.rule"]
         edge_hosts = set(re.findall(r"HostSNI\(`([^`]+)`\)", tcp_rule))
         expected = set(self.rules["domains"])

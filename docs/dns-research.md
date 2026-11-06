@@ -67,6 +67,15 @@ Production adaptation requires valid TLS, reachable bootstrap DNS, appropriate u
 
 ## Relay and modern transport limits
 
+`dns.ratelimit: 20` is a native **UDP-only** limit, not DoH abuse protection.
+AGH pins dnsproxy v0.83.2; its [limiter protocol gate](https://github.com/AdguardTeam/dnsproxy/blob/acf2b30e05202e171bbbaf4a3176ea07edb964b3/ratelimit/ratelimit.go#L51)
+checks `ProtoUDP`, while [HTTP/HTTPS DoH uses ProtoHTTPS](https://github.com/AdguardTeam/dnsproxy/blob/acf2b30e05202e171bbbaf4a3176ea07edb964b3/proxy/serverhttps.go#L254).
+There is consequently no shared Traefik-IP DoH bucket from this setting, and no
+DoH request limit from it either. Plan DoH rate/concurrency limits separately
+before activation; never add the proxy to `allowed_clients`. `trusted_proxies`
+only controls source attribution, separately from admission. This is pinned
+source evidence, not a multi-device load test.
+
 | Question | Finding | Status |
 |---|---|---|
 | Does AGH carry selected website traffic? | Its reviewed configuration and [documented capabilities](https://github.com/AdguardTeam/AdGuardHome/blob/003d6e1e15e04127f6d6d5e2f5c1aa843130752a/README.md) provide DNS filtering/rewriting, encrypted DNS and DHCP. No native target HTTPS/SNI relay was established. A rewrite changes destination discovery; it does not relay application traffic. Use a separate established relay. This is a bounded source-review conclusion. | PASS, bounded |

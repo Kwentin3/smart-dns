@@ -19,19 +19,41 @@ explicit limits. Production and ordinary-device acceptance remain separate.
   SSH material, certificate private keys or complete credential URLs. Rotate an
   exposed ID and distribute the replacement through the approved private channel.
 - Management/setup/API routes must not be exposed through the DoH frontend. Only
-  the intended DNS path is routed. Preserve ClientID paths; forwarded headers
+  exact `/dns-query` and a single lowercase-hex 32–64-character ClientID path are
+  routed; suffixes, malformed IDs and unrelated prefixes are excluded. Preserve
+  ClientID paths; forwarded headers
   must not create an IP admission exception. AGH has no published listener ports.
   Its required plain-DNS listener remains internal on 5353; native Windows checks
   observed UDP drop and TCP REFUSED without useful answers under ID-only ACL.
+- A production proposal must isolate management using a dedicated narrow
+  Traefik-to-AGH network or separately reviewed authentication/protection.
+  `users: []` leaves AGH HTTP/admin on `0.0.0.0:3000` without user authentication;
+  not publishing the port does not protect it from shared-network peer containers.
+  The lab network is a disposable fixture, not acceptance of that production
+  isolation. `trusted_proxies` governs address attribution separately from
+  ClientID admission; never add the proxy to `allowed_clients` to fix attribution.
 - DNS query logging/statistics are disabled for the pilot. HAProxy TCP logs still
   reveal traffic metadata; bound their size and access. Verify existing Traefik
-  logging redacts or excludes secret DoH paths before activation. Disabled lab
-  access logs do not prove production log handling.
+  logging redacts or excludes secret DoH paths before activation. The follow-up
+  lab JSON access log drops all fields/headers by default and keeps only
+  RouterName, ServiceName, DownstreamStatus and synthetic X-Lab-Case. No path,
+  query or ClientID is intentionally retained. This limited instrumentation
+  does not prove the existing production logging policy is safe.
+
+Native `dns.ratelimit: 20` is **not a DoH rate limit**. It does not create even
+a shared proxy-source DoH bucket. In pinned dnsproxy v0.83.2, the
+[rate-limit middleware checks only ProtoUDP](https://github.com/AdguardTeam/dnsproxy/blob/acf2b30e05202e171bbbaf4a3176ea07edb964b3/ratelimit/ratelimit.go#L51),
+whereas the [DoH handler uses ProtoHTTPS](https://github.com/AdguardTeam/dnsproxy/blob/acf2b30e05202e171bbbaf4a3176ea07edb964b3/proxy/serverhttps.go#L254).
+Consequently this setting provides no DoH request throttling. CPU/memory and
+connection bounds do not replace a request limit. The appropriate production
+DoH limit and attribution policy are future preactivation decisions; this
+follow-up does not configure or deploy them.
 
 ## Destination policy
 
-Traefik uses literal exact `HostSNI`; HAProxy independently admits the same exact
-SNI set. The direct-relay checks rejected unknown/missing SNI, IP literal and a
+Traefik uses literal exact `HostSNI`; HAProxy lowercases SNI before matching the
+same exact set, aligning case handling without expanding the allowlist. The
+first-iteration direct-relay checks rejected unknown/missing SNI, IP literal and a
 selected-host subdomain; logs showed no backend. An apex entry never grants
 descendants. Non-TLS/CONNECT and fragmented ClientHello are additional untested
 coverage, not conditions for closing the accepted first iteration. Do not
@@ -82,6 +104,12 @@ unrelated HTTP-router coexistence and bounded resource smoke checks. Own
 containers/network were removed with the existing-container ID sets unchanged.
 Preserve the report's binary/image identities, redacted observations and limits;
 do not expand these results into load, production or full-product claims.
+
+The [review follow-up](reports/2026-11-06/review-followup.md) owns the revised
+case-normalization and URL-boundary results. Negative URLs are evaluated using
+both HTTP status and selected RouterName so a routed backend 404 cannot be
+misreported as an edge rejection. The earlier accepted run does not establish
+the result of these changed inputs; keep follow-up outcomes explicit.
 
 ECH, cached DNS/HTTPS/SVCB/Alt-Svc, QUIC, alternate resolver settings and incomplete
 login/CDN coverage can defeat or bypass the intended path. Do not claim complete

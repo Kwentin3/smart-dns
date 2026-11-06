@@ -73,7 +73,7 @@ def compile_config(rules, settings, origins):
         "querylog": {"enabled": False}, "statistics": {"enabled": False}, "schema_version": 34}
     hap = [f"# rule snapshot {fingerprint}", "global", "  log stdout format raw local0", "  maxconn 256", "defaults", "  mode tcp", "  log global", "  option tcplog", "  timeout connect 5s", "  timeout client 60s", "  timeout server 60s", "frontend tls_relay", "  bind :8443", "  tcp-request inspect-delay 5s"]
     for i, d in enumerate(domains):
-        hap += [f"  acl host_{i} req.ssl_sni -m str {d}"]
+        hap += [f"  acl host_{i} req.ssl_sni,lower -m str {d}"]
     hap += ["  tcp-request content reject if { req.ssl_hello_type 1 } !" + " !".join(f"host_{i}" for i in range(len(domains))),
             "  tcp-request content accept if { req.ssl_hello_type 1 }"]
     for i, d in enumerate(domains):
@@ -81,14 +81,15 @@ def compile_config(rules, settings, origins):
     hap += ["  default_backend denied", "backend denied", "  tcp-request content reject"]
     for i, d in enumerate(domains):
         hap += [f"backend origin_{i}", f"  # {d}; no runtime resolver, no dynamic destination", f"  server fixed {origins[d]}:443"]
-    labels_dns = {"traefik.enable": "true", "traefik.http.routers.sd-doh.rule": f"Host(`{doh_host}`) && PathPrefix(`/dns-query`)", "traefik.http.routers.sd-doh.entrypoints": "websecure", "traefik.http.routers.sd-doh.tls": "true", "traefik.http.services.sd-doh.loadbalancer.server.port": "3000"}
+    # Compose consumes $$ as a literal $, preserving the regex end anchor in labels.
+    labels_dns = {"traefik.enable": "true", "traefik.http.routers.sd-doh.rule": f"Host(`{doh_host}`) && (Path(`/dns-query`) || PathRegexp(`^/dns-query/[0-9a-f]{{32,64}}$$`))", "traefik.http.routers.sd-doh.entrypoints": "websecure", "traefik.http.routers.sd-doh.tls": "true", "traefik.http.services.sd-doh.loadbalancer.server.port": "3000"}
     labels_relay = {"traefik.enable": "true", "traefik.tcp.routers.sd-relay.rule": " || ".join(f"HostSNI(`{d}`)" for d in domains), "traefik.tcp.routers.sd-relay.entrypoints": "websecure", "traefik.tcp.routers.sd-relay.tls.passthrough": "true", "traefik.tcp.services.sd-relay.loadbalancer.server.port": "8443"}
     bounded = {"restart": "no", "mem_limit": "128m", "cpus": 0.5, "pids_limit": 100, "logging": {"driver": "json-file", "options": {"max-size": "5m", "max-file": "2"}}, "cap_drop": ["ALL"], "security_opt": ["no-new-privileges:true"]}
     services = {
         "dns": {**bounded, "image": IMAGES["agh"], "user": "${LOCAL_UID:-1000}:${LOCAL_GID:-1000}", "cap_add": ["NET_BIND_SERVICE"], "volumes": ["./agh-conf:/opt/adguardhome/conf"], "tmpfs": ["/opt/adguardhome/work:uid=${LOCAL_UID:-1000},gid=${LOCAL_GID:-1000}"], "labels": labels_dns},
         "relay": {**bounded, "image": IMAGES["relay"], "read_only": True, "ports": ["127.0.0.1:18444:8443"], "volumes": ["./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro"], "labels": labels_relay},
         "edge": {**bounded, "image": IMAGES["edge"], "ports": ["127.0.0.1:18443:8443"], "volumes": ["/var/run/docker.sock:/var/run/docker.sock:ro"],
-          "command": ["--entrypoints.websecure.address=:8443", "--providers.docker=true", "--providers.docker.exposedbydefault=false", "--providers.docker.constraints=Label(`smart-dns.lab`,`true`)", "--api.dashboard=false", "--accesslog=false"]},
+          "command": ["--entrypoints.websecure.address=:8443", "--providers.docker=true", "--providers.docker.exposedbydefault=false", "--providers.docker.constraints=Label(`smart-dns.lab`,`true`)", "--api.dashboard=false", "--accesslog=true", "--accesslog.format=json", "--accesslog.fields.defaultmode=drop", "--accesslog.fields.names.RouterName=keep", "--accesslog.fields.names.ServiceName=keep", "--accesslog.fields.names.DownstreamStatus=keep", "--accesslog.fields.headers.defaultmode=drop", "--accesslog.fields.headers.names.X-Lab-Case=keep"]},
         "existing-site": {**bounded, "image": IMAGES["fixture"], "labels": {"traefik.enable": "true", "traefik.http.routers.existing.rule": "Host(`existing.example.net`)", "traefik.http.routers.existing.entrypoints": "websecure", "traefik.http.routers.existing.tls": "true", "traefik.http.services.existing.loadbalancer.server.port": "80"}}
     }
     for service in services.values():

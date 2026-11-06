@@ -67,6 +67,10 @@ else: raise SystemExit('HTTP router readiness timeout')
 PY
 timeout 120 python3 tools/probe.py --settings .local/settings.json > .local/probe.json
 cat .local/probe.json
+review_args=()
+if [ "${1:-}" = "--observe-review" ]; then review_args=(--observe); fi
+timeout 120 python3 tools/probe_review.py --settings .local/settings.json --edge-container "$("${compose[@]}" ps -q edge)" "${review_args[@]}" > .local/review-probe.json
+cat .local/review-probe.json
 docker stats --no-stream --format '{{.Name}} {{.MemUsage}} {{.CPUPerc}} {{.NetIO}}' $("${compose[@]}" ps -q) > .local/stats.txt
 for image in adguard/adguardhome:v0.107.80 haproxy:3.2.26-alpine traefik:v3.6.25 traefik/whoami:v1.11.0; do
   docker image inspect "$image" --format '{{json .RepoDigests}}'

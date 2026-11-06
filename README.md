@@ -14,6 +14,8 @@ Production VPS и Hermes не изменяются. Реальное развё�
 (HTTP при этом **200**). Точные A rewrite, AAAA/HTTPS/SVCB NODATA, passthrough с
 проверкой origin-сертификатов, отказ чужому SNI и соседний HTTP router проверены
 на отдельном Linux-стенде. [Отчёт и ограничения](docs/reports/2026-11-06/acceptance.md).
+После ревью дополнительно проверены смешанный регистр SNI и 15 сырых URL DoH:
+[правки и повторная проверка](docs/reports/2026-11-06/review-followup.md).
 
 Один [reviewed список](rules/pilot.json) порождает DNS rules, Traefik labels и
 HAProxy ACL/backends. Внешние [реестры](rules/sources.json) — предложения;
@@ -66,6 +68,13 @@ docker compose -f generated/compose.lab.json config -q
 каждого имени из pilot.json, без лишних записей. Render отвергает private,
 reserved, metadata, multicast, IPv6, собственный ingress и provider-service IP.
 Не отправляйте `.local/settings.json` и generated/ в PR: там ClientID.
+
+DoH router принимает только `/dns-query` и `/dns-query/<32–64 lowercase hex>`;
+анонимный/неизвестный ID по-прежнему отклоняет сам AGH. `dns.ratelimit: 20`
+ограничивает UDP DNS, **не DoH**. Перед production нужен отдельный план лимитов
+DoH; IP прокси в `allowed_clients` для этого не добавлять. AGH management/API
+без пароля нельзя помещать в общую сеть приложений: нужна узкая сеть
+Traefik↔AGH либо отдельно одобренная защита management.
 
 Нативная Windows-проверка отдельно: скачать
 [официальный AGH v0.107.80](https://github.com/AdguardTeam/AdGuardHome/releases/tag/v0.107.80),

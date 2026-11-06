@@ -1,0 +1,430 @@
+{
+  "archive_sha256": {
+    "review-before": "f2d0724be5ef75a6b819c80d7fc1eb04859774e109d925253d2ff6664d791cb2",
+    "review-after": "f98954be79e33f1b3edf052ba72c8501d41fe3412d2f5042fbf72bc2d3dbf09f"
+  },
+  "after_source_sha256": {
+    "tools/render.py": "7f84b6634ffede5f1b414e1e1d062aae09a73e61298e2d121cb4a15f6eed1b8f",
+    "tools/probe.py": "342e4523805c875ba89b79950986a3593374aeed718119f1436d76da91460d76",
+    "tools/probe_review.py": "5e3b2a133cd0d3e67dcfd3320a0c078206290d40cb393293c879fe0ab96dbfed",
+    "tools/run_lab.sh": "a2236654704b007a53d50309b0e49feb9302fb1976c00496718200c7e2e23ad6",
+    "tests/test_render.py": "1d992fc9e1ddd1359372d5759564a55a0d677f8cb7406b5e9eef8ee5d6c5b55a",
+    "config/images.lock.json": "971d521dc1a89548ec6c081e5e1b9fd3b2be78b5a81fa4b2cc38e6266dd2970e",
+    "rules/pilot.json": "c20f64628f29d661107e970a30cb5f87b67f3a81c15a1a166d5d28b197bbcf36"
+  },
+  "baseline_excluded_invalid_edge_handshake_assertions": 2,
+  "before_review_probes": [
+    {
+      "check": "mixed-SNI-edge",
+      "domain": "ChAtGpT.CoM",
+      "status": "FAIL",
+      "error": "SSLEOFError"
+    },
+    {
+      "check": "mixed-SNI-edge",
+      "domain": "ClAuDe.Ai",
+      "status": "FAIL",
+      "error": "SSLEOFError"
+    },
+    {
+      "check": "mixed-SNI-relay",
+      "domain": "ChAtGpT.CoM",
+      "status": "FAIL",
+      "error": "SSLEOFError"
+    },
+    {
+      "check": "mixed-SNI-relay",
+      "domain": "ClAuDe.Ai",
+      "status": "FAIL",
+      "error": "SSLEOFError"
+    },
+    {
+      "check": "mixed-SNI-relay",
+      "status": "PASS",
+      "domain": "SuB.ChAtGpT.CoM"
+    },
+    {
+      "check": "mixed-SNI-relay",
+      "status": "PASS",
+      "domain": "ChAtGpT.CoM.evil.invalid"
+    },
+    {
+      "check": "DoH-path",
+      "case": "authorized",
+      "status": "PASS",
+      "http": 200,
+      "expected_dns_route": true,
+      "route_boundary": "PASS",
+      "dns_router_matched": true
+    },
+    {
+      "check": "DoH-path",
+      "case": "anonymous",
+      "status": "PASS",
+      "http": 200,
+      "expected_dns_route": true,
+      "route_boundary": "PASS",
+      "dns_router_matched": true
+    },
+    {
+      "check": "DoH-path",
+      "case": "unknown-client",
+      "status": "PASS",
+      "http": 200,
+      "expected_dns_route": true,
+      "route_boundary": "PASS",
+      "dns_router_matched": true
+    },
+    {
+      "check": "DoH-path",
+      "case": "prefix-lookalike",
+      "status": "FAIL",
+      "http": 404,
+      "expected_dns_route": false,
+      "route_boundary": "FAIL",
+      "dns_router_matched": true
+    },
+    {
+      "check": "DoH-path",
+      "case": "suffix-lookalike",
+      "status": "FAIL",
+      "http": 404,
+      "expected_dns_route": false,
+      "route_boundary": "FAIL",
+      "dns_router_matched": true
+    },
+    {
+      "check": "DoH-path",
+      "case": "management-under-prefix",
+      "status": "FAIL",
+      "http": 404,
+      "expected_dns_route": false,
+      "route_boundary": "FAIL",
+      "dns_router_matched": true
+    },
+    {
+      "check": "DoH-path",
+      "case": "management",
+      "status": "PASS",
+      "http": 404,
+      "expected_dns_route": false,
+      "route_boundary": "PASS",
+      "dns_router_matched": false
+    },
+    {
+      "check": "DoH-path",
+      "case": "setup",
+      "status": "PASS",
+      "http": 404,
+      "expected_dns_route": false,
+      "route_boundary": "PASS",
+      "dns_router_matched": false
+    },
+    {
+      "check": "DoH-path",
+      "case": "root",
+      "status": "PASS",
+      "http": 404,
+      "expected_dns_route": false,
+      "route_boundary": "PASS",
+      "dns_router_matched": false
+    },
+    {
+      "check": "DoH-path",
+      "case": "trailing-slash",
+      "status": "FAIL",
+      "http": 404,
+      "expected_dns_route": false,
+      "route_boundary": "FAIL",
+      "dns_router_matched": true
+    },
+    {
+      "check": "DoH-path",
+      "case": "dot-traversal",
+      "status": "PASS",
+      "http": 404,
+      "expected_dns_route": false,
+      "route_boundary": "PASS",
+      "dns_router_matched": false
+    },
+    {
+      "check": "DoH-path",
+      "case": "encoded-dot-traversal",
+      "status": "PASS",
+      "http": 404,
+      "expected_dns_route": false,
+      "route_boundary": "PASS",
+      "dns_router_matched": false
+    },
+    {
+      "check": "DoH-path",
+      "case": "encoded-slash-traversal",
+      "status": "FAIL",
+      "http": 404,
+      "expected_dns_route": false,
+      "route_boundary": "FAIL",
+      "dns_router_matched": true
+    },
+    {
+      "check": "DoH-path",
+      "case": "encoded-backslash",
+      "status": "FAIL",
+      "http": 404,
+      "expected_dns_route": false,
+      "route_boundary": "FAIL",
+      "dns_router_matched": true
+    },
+    {
+      "check": "DoH-path",
+      "case": "double-encoded-traversal",
+      "status": "FAIL",
+      "http": 404,
+      "expected_dns_route": false,
+      "route_boundary": "FAIL",
+      "dns_router_matched": true
+    }
+  ],
+  "after_review_probes": [
+    {
+      "check": "mixed-SNI-edge",
+      "domain": "ChAtGpT.CoM",
+      "status": "PASS",
+      "tls": "TLSv1.3"
+    },
+    {
+      "check": "mixed-SNI-edge",
+      "domain": "ClAuDe.Ai",
+      "status": "PASS",
+      "tls": "TLSv1.3"
+    },
+    {
+      "check": "mixed-SNI-relay",
+      "domain": "ChAtGpT.CoM",
+      "status": "PASS",
+      "tls": "TLSv1.3"
+    },
+    {
+      "check": "mixed-SNI-relay",
+      "domain": "ClAuDe.Ai",
+      "status": "PASS",
+      "tls": "TLSv1.3"
+    },
+    {
+      "check": "mixed-SNI-relay",
+      "status": "PASS",
+      "domain": "SuB.ChAtGpT.CoM"
+    },
+    {
+      "check": "mixed-SNI-relay",
+      "status": "PASS",
+      "domain": "ChAtGpT.CoM.evil.invalid"
+    },
+    {
+      "check": "DoH-path",
+      "case": "authorized",
+      "status": "PASS",
+      "http": 200,
+      "expected_dns_route": true,
+      "route_boundary": "PASS",
+      "dns_router_matched": true
+    },
+    {
+      "check": "DoH-path",
+      "case": "anonymous",
+      "status": "PASS",
+      "http": 200,
+      "expected_dns_route": true,
+      "route_boundary": "PASS",
+      "dns_router_matched": true
+    },
+    {
+      "check": "DoH-path",
+      "case": "unknown-client",
+      "status": "PASS",
+      "http": 200,
+      "expected_dns_route": true,
+      "route_boundary": "PASS",
+      "dns_router_matched": true
+    },
+    {
+      "check": "DoH-path",
+      "case": "prefix-lookalike",
+      "status": "PASS",
+      "http": 404,
+      "expected_dns_route": false,
+      "route_boundary": "PASS",
+      "dns_router_matched": false
+    },
+    {
+      "check": "DoH-path",
+      "case": "suffix-lookalike",
+      "status": "PASS",
+      "http": 404,
+      "expected_dns_route": false,
+      "route_boundary": "PASS",
+      "dns_router_matched": false
+    },
+    {
+      "check": "DoH-path",
+      "case": "management-under-prefix",
+      "status": "PASS",
+      "http": 404,
+      "expected_dns_route": false,
+      "route_boundary": "PASS",
+      "dns_router_matched": false
+    },
+    {
+      "check": "DoH-path",
+      "case": "management",
+      "status": "PASS",
+      "http": 404,
+      "expected_dns_route": false,
+      "route_boundary": "PASS",
+      "dns_router_matched": false
+    },
+    {
+      "check": "DoH-path",
+      "case": "setup",
+      "status": "PASS",
+      "http": 404,
+      "expected_dns_route": false,
+      "route_boundary": "PASS",
+      "dns_router_matched": false
+    },
+    {
+      "check": "DoH-path",
+      "case": "root",
+      "status": "PASS",
+      "http": 404,
+      "expected_dns_route": false,
+      "route_boundary": "PASS",
+      "dns_router_matched": false
+    },
+    {
+      "check": "DoH-path",
+      "case": "trailing-slash",
+      "status": "PASS",
+      "http": 404,
+      "expected_dns_route": false,
+      "route_boundary": "PASS",
+      "dns_router_matched": false
+    },
+    {
+      "check": "DoH-path",
+      "case": "dot-traversal",
+      "status": "PASS",
+      "http": 404,
+      "expected_dns_route": false,
+      "route_boundary": "PASS",
+      "dns_router_matched": false
+    },
+    {
+      "check": "DoH-path",
+      "case": "encoded-dot-traversal",
+      "status": "PASS",
+      "http": 404,
+      "expected_dns_route": false,
+      "route_boundary": "PASS",
+      "dns_router_matched": false
+    },
+    {
+      "check": "DoH-path",
+      "case": "encoded-slash-traversal",
+      "status": "PASS",
+      "http": 404,
+      "expected_dns_route": false,
+      "route_boundary": "PASS",
+      "dns_router_matched": false
+    },
+    {
+      "check": "DoH-path",
+      "case": "encoded-backslash",
+      "status": "PASS",
+      "http": 404,
+      "expected_dns_route": false,
+      "route_boundary": "PASS",
+      "dns_router_matched": false
+    },
+    {
+      "check": "DoH-path",
+      "case": "double-encoded-traversal",
+      "status": "PASS",
+      "http": 404,
+      "expected_dns_route": false,
+      "route_boundary": "PASS",
+      "dns_router_matched": false
+    }
+  ],
+  "after_core_probes": [
+    {
+      "check": "anonymous",
+      "status": "PASS",
+      "http": 200,
+      "dns_rcode": "REFUSED",
+      "answer_count": 0
+    },
+    {
+      "check": "unknown-client",
+      "status": "PASS",
+      "http": 200,
+      "dns_rcode": "REFUSED",
+      "answer_count": 0
+    },
+    {
+      "check": "rewrite-A-and-empty-AAAA-SVCB-HTTPS",
+      "domain": "chatgpt.com",
+      "status": "PASS"
+    },
+    {
+      "check": "rewrite-A-and-empty-AAAA-SVCB-HTTPS",
+      "domain": "claude.ai",
+      "status": "PASS"
+    },
+    {
+      "check": "direct-unmodified",
+      "domain": "example.com",
+      "status": "PASS"
+    },
+    {
+      "check": "direct-unmodified",
+      "domain": "sub.chatgpt.com",
+      "status": "PASS"
+    },
+    {
+      "check": "origin-certificate",
+      "domain": "chatgpt.com",
+      "status": "PASS",
+      "tls": "TLSv1.3"
+    },
+    {
+      "check": "origin-certificate",
+      "domain": "claude.ai",
+      "status": "PASS",
+      "tls": "TLSv1.3"
+    },
+    {
+      "check": "relay-reject-not-approved.example.net",
+      "status": "PASS"
+    },
+    {
+      "check": "relay-reject-None",
+      "status": "PASS"
+    },
+    {
+      "check": "relay-reject-127.0.0.1",
+      "status": "PASS"
+    },
+    {
+      "check": "relay-reject-sub.chatgpt.com",
+      "status": "PASS"
+    },
+    {
+      "check": "existing-HTTP-router-coexistence",
+      "status": "PASS"
+    }
+  ],
+  "existing_container_ids_equal": {
+    "review-before": true,
+    "review-after": true
+  }
+}

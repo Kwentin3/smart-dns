@@ -23,8 +23,10 @@ One render produces:
 | `snapshot.json` | Rules/origin fingerprint, selected hosts and image references from digest-pinned `config/images.lock.json`; retain separately hashed settings for an exact run |
 
 DoH flows from a client to Traefik HTTPS termination at the resolver hostname,
-then to AGH's private HTTP listener. Only the intended `/dns-query` and ClientID
-paths may reach AGH. The path must survive proxying. AGH admits IDs through
+then to AGH's private HTTP listener. The route accepts exactly `/dns-query` or
+`^/dns-query/[0-9a-f]{32,64}$`; the Compose template writes `$$` for the final
+literal regex anchor. Other prefixes, extra path segments and malformed IDs do
+not enter that router. The ClientID path must survive proxying. AGH admits IDs through
 nonempty native `dns.allowed_clients`; no IP or proxy-subnet admission exception
 is allowed. Management/setup paths must stay inaccessible externally.
 
@@ -40,6 +42,8 @@ connection reaches Traefik's exact `HostSNI` TCP rule, then HAProxy and its fixe
 origin IPv4:443. Both preserve the original client TLS session; the origin owns
 the website certificate. The original public DNS is used only during explicit
 origin preparation, never during a live HAProxy connection.
+HAProxy lowercases the received SNI before exact matching, aligning mixed-case
+input with Traefik's canonical domain matching without admitting subdomains.
 
 The production read-only inspection established Traefik v3.6.25 with Docker
 provider enabled, `exposedByDefault=false`, and file provider disabled. Integration
@@ -57,6 +61,14 @@ writable dedicated configuration directory for native atomic writes and matching
 work tmpfs. Only its required NET_BIND_SERVICE capability is restored; other
 capabilities remain dropped.
 
+The follow-up lab edge uses JSON access logs with fields and headers dropped by
+default. It retains only RouterName, ServiceName, DownstreamStatus and a synthetic
+X-Lab-Case header, not paths, queries or ClientIDs. This limited instrumentation
+allows negative URLs to be checked by both status and router identity: a backend
+404 is not evidence that the edge refused a route. Follow-up results are recorded
+separately in the [review follow-up](reports/2026-11-06/review-followup.md); this
+logging configuration does not establish production secret redaction.
+
 The isolated Linux run passed all 13 recorded probe rows: DNS admission/rewrites,
 TLSv1.3 with verified certificates for both origins, unknown/no-SNI/IP/subdomain
 relay rejection, and an unrelated HTTP router on the shared lab entrypoint.
@@ -65,11 +77,17 @@ Native Windows AGH and offline contract evidence are also recorded in the
 [acceptance report](reports/2026-11-06/acceptance.md). These results establish the
 bounded lab behavior, not production or ordinary-device acceptance.
 
-Production integration remains a manual, reviewed step: select the existing
-Traefik network, certificate ownership, private AGH listener, exact DoH path
-boundary and labels, ensure no own-domain overlap, and create a separate bounded
-Compose definition. Do not start the lab edge on production. No production
-Compose deployment is finalized by this repository.
+Production integration remains a manual, reviewed step. Isolate management with
+a dedicated narrow Traefik-to-AGH network or separately reviewed protection:
+AGH has `users: []` and its
+HTTP/admin listener binds `0.0.0.0:3000`; an unpublished port on a shared app
+network does not isolate management from peer containers. Select certificate
+ownership, the private network attachment, exact DoH path boundary and labels,
+ensure no own-domain overlap, and create a separate bounded Compose definition.
+Do not start the lab edge on production. No production Compose deployment is
+finalized by this repository. Native `dns.ratelimit: 20` applies only to UDP and
+does not limit DoH; production DoH limits remain a separate preactivation decision
+as explained in [security](security.md).
 
 The relay is publicly usable for its two approved fixed targets by anyone who
 can reach it; DNS ClientIDs do not authenticate website traffic. This residual

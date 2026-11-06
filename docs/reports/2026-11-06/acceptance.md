@@ -4,6 +4,11 @@ Scope: offline/source artefacts and an isolated disposable Linux pilot for issue
 #1. **No production deployment, installation, restart, firewall or Hermes change.**
 Operator-only host/IP/network/path details and generated ClientIDs are excluded.
 
+This is the initial `f2d8caf` acceptance record. The subsequent
+[PR review follow-up](review-followup.md) supersedes the SNI/path/logging boundaries
+with new source hashes and real before/after checks; other original evidence
+retains its stated scope.
+
 ## Identity and commands
 
 Native Windows AGH v0.107.80 ZIP SHA256:
@@ -15,7 +20,7 @@ Final accepted Linux input archive SHA256:
 `78cb34e3be92319c580f72142a1f314e350b15ea21fe936b11c9e7cda40a31dd`.
 Matched Windows sender and Linux receiver before extraction. Source files for
 that run: tools/render.py, tools/probe.py, tools/run_lab.sh and config/images.lock.json
-as delivered with this report. Documentation-only edits after the run do not
+at revision `f2d8caf`. Documentation-only edits after the run do not
 change tested runtime inputs. Container runtime: Docker 28.5.1, Compose 2.40.3.
 Image digests are fixed in [images.lock.json](../../../config/images.lock.json)
 and were read back from pulled images. Python dependencies are stdlib only.
