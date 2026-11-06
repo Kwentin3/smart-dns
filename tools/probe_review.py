@@ -2,6 +2,7 @@
 import argparse
 import http.client
 import json
+import socket
 import ssl
 import subprocess
 import time
@@ -19,8 +20,7 @@ def main():
     rows = []
     for port, hop in ((18443, "edge"), (18444, "relay")):
         for name, allowed in (("ChAtGpT.CoM", True), ("ClAuDe.Ai", True), ("SuB.ChAtGpT.CoM", False), ("ChAtGpT.CoM.evil.invalid", False)):
-            # Shared edge may complete TLS for unrelated HTTP routes. The strict
-            # unknown-SNI handshake rejection belongs to the relay, not that edge.
+            # Unknown SNI may terminate locally on the shared HTTP edge.
             if hop == "edge" and not allowed:
                 continue
             try:
@@ -59,10 +59,13 @@ def main():
             good = response.status == 200 and len(body) >= 12 if allowed else response.status in (400, 404)
             if case in ("anonymous", "unknown-client"):
                 good = good and body[3] & 15 == 5 and body[6:8] == b"\0\0"
+            elif case == "authorized":
+                good = good and body[3] & 15 == 0 and body[6:8] == b"\0\1" and body[-4:] == socket.inet_aton(settings["relay_ipv4"])
             rows.append({"check": "DoH-path", "case": case, "status": "PASS" if good else "FAIL", "http": response.status, "expected_dns_route": allowed})
         finally:
             connection.close()
-    # RouterName distinguishes edge 404 from AGH 404; status alone is insufficient.
+    # DoH router deliberately suppresses its access log. Negative URLs must still
+    # leave an unmatched-router record: an AGH-generated 404 with no record fails.
     observed = {}
     for _ in range(30):
         raw = subprocess.check_output(["docker", "logs", args.edge_container], stderr=subprocess.STDOUT, text=True)
@@ -75,7 +78,7 @@ def main():
             case = record.get("request_X-Lab-Case")
             if case:
                 observed[case] = record.get("RouterName", "")
-        if all(case in observed for case, _, _ in paths):
+        if all(case in observed for case, _, allowed in paths if not allowed):
             break
         time.sleep(.1)
     for row in rows:
@@ -83,9 +86,10 @@ def main():
             continue
         router = observed.get(row["case"])
         reached = router == "sd-doh@docker"
-        good = router is not None and reached == row["expected_dns_route"]
+        good = row["case"] not in observed if row["expected_dns_route"] else router == ""
         row["route_boundary"] = "PASS" if good else "FAIL"
-        row["dns_router_matched"] = reached
+        row["route_evidence"] = "wire-DNS-and-router-log-suppressed" if row["expected_dns_route"] else "unmatched-router-access-log"
+        row["dns_router_log_present"] = reached
         if not good:
             row["status"] = "FAIL"
     print(json.dumps(rows, indent=2))

@@ -3,9 +3,17 @@ import copy
 import json
 from pathlib import Path
 import re
+import subprocess
+import sys
+import tempfile
 import unittest
+from unittest.mock import patch
 
-from tools.render import compile_config
+from tools.render import compile_config, write_new
+
+
+# Public disposable fixture only; never a deployment credential.
+LAB_PASSWORD_HASH = "$2b$10$kkngSiVN5gx/I5BfjB/TGOJmh1hd1rHbjZlw8R0EbBXsUnS721f56"
 
 
 class RenderContractTests(unittest.TestCase):
@@ -21,6 +29,8 @@ class RenderContractTests(unittest.TestCase):
             "client_ids": ["0123456789abcdef0123456789abcdef"],
             "upstream_dns": ["https://dns.example.org/dns-query"],
             "bootstrap_dns": ["1.1.1.1"],
+            "admin_username": "labadmin",
+            "admin_password_hash": LAB_PASSWORD_HASH,
         }
         self.origins = {"chatgpt.com": "1.1.1.1", "claude.ai": "8.8.8.8"}
 
@@ -93,6 +103,127 @@ class RenderContractTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     compile_config(rules, self.settings, {domain: "1.1.1.1"})
 
+    def test_native_admin_account_is_required_and_confined_to_agh_config(self):
+        artifacts = self.render()
+        self.assertEqual(artifacts["agh-conf/AdGuardHome.yaml"]["users"], [
+            {"name": "labadmin", "password": LAB_PASSWORD_HASH},
+        ])
+        for name, artifact in artifacts.items():
+            if name != "agh-conf/AdGuardHome.yaml":
+                self.assertNotIn(LAB_PASSWORD_HASH, json.dumps(artifact), name)
+        for key in ("admin_username", "admin_password_hash"):
+            with self.subTest(missing=key):
+                settings = dict(self.settings)
+                del settings[key]
+                with self.assertRaises((KeyError, ValueError)):
+                    compile_config(self.rules, settings, self.origins)
+
+    def test_invalid_admin_input_is_rejected_without_echoing_credentials(self):
+        invalid = {
+            "admin_username": ["", "Admin", "admin\nusers: []", "../admin", "a" * 33],
+            "admin_password_hash": ["", "lab-only-change-me", "sha256:password", LAB_PASSWORD_HASH[:-1], LAB_PASSWORD_HASH.replace("$10$", "$03$")],
+        }
+        for key, values in invalid.items():
+            for value in values:
+                with self.subTest(field=key, empty=not value):
+                    with self.assertRaises(ValueError) as error:
+                        compile_config(self.rules, {**self.settings, key: value}, self.origins)
+                    if value:
+                        self.assertNotIn(value, str(error.exception))
+
+    def test_dns_network_has_only_dns_and_edge_and_limits_are_attached(self):
+        services = self.render()["compose.lab.json"]["services"]
+        members = {name for name, service in services.items() if "dns" in service.get("networks", ["default"])}
+        self.assertEqual(members, {"dns", "edge"})
+        self.assertNotIn("default", services["dns"]["networks"])
+        labels = services["dns"]["labels"]
+        chain = labels["traefik.http.routers.sd-doh.middlewares"].split(",")
+        self.assertEqual(len(chain), 3)
+        host, rate, flight = chain
+        prefix = "traefik.http.middlewares."
+        self.assertEqual(labels[prefix + host + ".headers.customrequestheaders.Host"], self.settings["doh_host"])
+        for name, kind in ((rate, "ratelimit"), (flight, "inflightreq")):
+            self.assertEqual(labels[prefix + name + "." + kind + ".sourcecriterion.requesthost"], "true")
+        self.assertEqual(labels["traefik.http.routers.sd-doh.observability.accesslogs"], "false")
+
+    def test_publishes_complete_new_directory_with_exact_content(self):
+        artifacts = self.render()
+        with tempfile.TemporaryDirectory() as folder:
+            out = Path(folder) / "candidate"
+            write_new(artifacts, out)
+            self.assertEqual({str(path.relative_to(out)).replace("\\", "/") for path in out.rglob("*") if path.is_file()}, set(artifacts))
+            for name, value in artifacts.items():
+                content = (out / name).read_text(encoding="utf-8")
+                self.assertEqual(content if isinstance(value, str) else json.loads(content), value)
+            self.assertEqual(list(Path(folder).iterdir()), [out])
+
+    def test_existing_output_is_rejected_and_accepted_bytes_remain_unchanged(self):
+        with tempfile.TemporaryDirectory() as folder:
+            out = Path(folder) / "accepted"
+            write_new(self.render(), out)
+            sentinel = out / "do-not-touch"
+            sentinel.write_bytes(b"accepted\x00generation\xff")
+            before = {path.relative_to(out): path.read_bytes() for path in out.rglob("*") if path.is_file()}
+            with self.assertRaises(FileExistsError):
+                write_new({"partial.txt": "new"}, out)
+            self.assertEqual({path.relative_to(out): path.read_bytes() for path in out.rglob("*") if path.is_file()}, before)
+            existing_file = Path(folder) / "occupied-file"
+            existing_file.write_bytes(b"also-accepted")
+            with self.assertRaises(FileExistsError):
+                write_new(self.render(), existing_file)
+            self.assertEqual(existing_file.read_bytes(), b"also-accepted")
+
+    def test_write_failure_leaves_no_candidate_or_staging_and_preserves_accepted(self):
+        artifacts = self.render()
+        real_write = Path.write_text
+        writes = []
+
+        def fail_second_write(path, *args, **kwargs):
+            writes.append(path)
+            if len(writes) == 2:
+                self.assertTrue(writes[0].is_file())
+                raise OSError("simulated storage failure")
+            return real_write(path, *args, **kwargs)
+
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            accepted = root / "accepted"
+            write_new(artifacts, accepted)
+            before = {path.relative_to(accepted): path.read_bytes() for path in accepted.rglob("*") if path.is_file()}
+            candidate = root / "candidate"
+            with patch.object(Path, "write_text", fail_second_write):
+                with self.assertRaisesRegex(OSError, "simulated storage failure"):
+                    write_new(artifacts, candidate)
+            self.assertEqual(len(writes), 2)
+            self.assertFalse(candidate.exists())
+            self.assertEqual(list(root.iterdir()), [accepted])
+            self.assertEqual({path.relative_to(accepted): path.read_bytes() for path in accepted.rglob("*") if path.is_file()}, before)
+
+    def test_cli_publishes_once_and_reports_errors_without_credentials(self):
+        renderer = Path(__file__).resolve().parents[1] / "tools/render.py"
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            for name, value in (("rules", self.rules), ("settings", self.settings), ("origins", self.origins)):
+                (root / (name + ".json")).write_text(json.dumps(value), encoding="utf-8")
+            out = root / "output"
+            command = [sys.executable, str(renderer), "--rules", str(root / "rules.json"), "--settings", str(root / "settings.json"), "--origins", str(root / "origins.json"), "--out", str(out)]
+            success = subprocess.run(command, capture_output=True, text=True, timeout=10)
+            self.assertEqual(success.returncode, 0, success.stderr)
+            before = {path.relative_to(out): path.read_bytes() for path in out.rglob("*") if path.is_file()}
+            refused = subprocess.run(command, capture_output=True, text=True, timeout=10)
+            self.assertNotEqual(refused.returncode, 0)
+            self.assertEqual({path.relative_to(out): path.read_bytes() for path in out.rglob("*") if path.is_file()}, before)
+            invalid_settings = {**self.settings, "admin_password_hash": "plaintext-secret-must-not-be-echoed"}
+            (root / "settings.json").write_text(json.dumps(invalid_settings), encoding="utf-8")
+            command[-1] = str(root / "invalid-output")
+            invalid = subprocess.run(command, capture_output=True, text=True, timeout=10)
+            self.assertNotEqual(invalid.returncode, 0)
+            self.assertFalse((root / "invalid-output").exists())
+            for result in (success, refused, invalid):
+                output = result.stdout + result.stderr
+                for secret in (LAB_PASSWORD_HASH, self.settings["client_ids"][0], invalid_settings["admin_password_hash"]):
+                    self.assertNotIn(secret, output)
+
     def test_rejects_nonpublic_or_noncanonical_origins(self):
         for address in [
             "127.0.0.1", "0.0.0.0", "10.0.0.1", "172.16.0.1", "192.168.1.1",
@@ -143,6 +274,25 @@ class RenderContractTests(unittest.TestCase):
         self.assertEqual((self.rules, self.settings, self.origins), before)
         self.assertEqual(first["snapshot.json"]["domains"], self.rules["domains"])
         self.assertEqual(first["snapshot.json"]["origins"], self.origins)
+
+    def test_native_fixture_setup_error_reaps_started_upstream_thread(self):
+        # Real child process and real ephemeral UDP thread. Invalid rules fail
+        # after thread.start but before Popen: exiting proves finally reaped it.
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / "rules").mkdir()
+            (root / "rules/pilot.json").write_text(json.dumps({**self.rules, "domains": ["*.chatgpt.com"]}))
+            (root / "password").write_text("lab-only-change-me")
+            code = "\n".join([
+                "import sys", "from pathlib import Path",
+                "sys.path.insert(0, sys.argv[1])", "import test_native_agh as fixture",
+                "fixture.ROOT = Path(sys.argv[2])",
+                "sys.argv = ['fixture', '--binary', 'not-started', '--admin-password-file', str(fixture.ROOT / 'password')]",
+                "fixture.main()",
+            ])
+            result = subprocess.run([sys.executable, "-c", code, str(Path(__file__).resolve().parents[1] / "tools"), folder], capture_output=True, text=True, timeout=5)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("invalid exact domain", result.stderr)
 
 
 if __name__ == "__main__":

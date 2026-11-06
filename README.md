@@ -1,103 +1,105 @@
 # Smart DNS
 
-Изолированный пилот по [issue #1](https://github.com/Kwentin3/smart-dns/issues/1):
-AdGuard Home → точные TCP HostSNI rules Traefik → HAProxy → фиксированный origin.
-Production VPS и Hermes не изменяются. Реальное развёртывание требует отдельного разрешения.
+Изолированный пилот [issue #1](https://github.com/Kwentin3/smart-dns/issues/1):
+AdGuard Home → точные HostSNI rules Traefik → HAProxy → фиксированный public IPv4.
+Production, Hermes и общий Traefik не изменяются. Список содержит только
+`chatgpt.com` и `claude.ai`, без поддоменов. Вход, сообщения, CDN, файлы, повторные
+сессии и устройства целиком пока не приняты; Gemini отложен.
+[Текущий GOAL и решения](docs/refactor.md).
 
-Пилот содержит **два точных имени**, `chatgpt.com` и `claude.ai`. Это проверка
-безопасного маршрута, а не готовность всего ChatGPT/Claude: вход, CDN, загрузки,
-мобильные приложения и дополнительные домены пока не приняты. Gemini отложен.
+## Устройство
 
-## Что проверено
+Один [reviewed список](rules/pilot.json) через `tools/render.py` порождает DNS
+rules, Traefik labels и HAProxy ACL/backends. [Внешние реестры](rules/sources.json)
+дают предложения, без автоматического импорта. Render не обращается в сеть и не
+запускает сервисы. Origins — reviewed numeric public IPv4:443; private/reserved,
+metadata, multicast, IPv6, собственный ingress и provider-service IP отвергаются.
+Runtime DNS/fallback нет.
 
-Настоящий AGH отклоняет анонимный/неизвестный ClientID через DNS REFUSED
-(HTTP при этом **200**). Точные A rewrite, AAAA/HTTPS/SVCB NODATA, passthrough с
-проверкой origin-сертификатов, отказ чужому SNI и соседний HTTP router проверены
-на отдельном Linux-стенде. [Отчёт и ограничения](docs/reports/2026-11-06/acceptance.md).
-После ревью дополнительно проверены смешанный регистр SNI и 15 сырых URL DoH:
-[правки и повторная проверка](docs/reports/2026-11-06/review-followup.md).
+AGH использует native ClientID-only `allowed_clients` и обязательную admin-учётную
+запись с bcrypt hash. Узкая DNS-сеть соединяет только AGH и lab Traefik. Plain DNS
+5353 остаётся внутренним и не публикуется. Public DoH route не ведёт к management;
+native login дополнительно защищает прямой доступ. AGH работает под UID/GID
+оператора с writable config directory и только необходимой NET_BIND_SERVICE.
 
-Один [reviewed список](rules/pilot.json) порождает DNS rules, Traefik labels и
-HAProxy ACL/backends. Внешние [реестры](rules/sources.json) — предложения;
-автоматического импорта/обновления/деплоя нет. Лицензия двух основных кандидатов
-не установлена, их содержимое сюда не копируется. Реальные настройки и секреты
-хранятся только вне Git.
+Native Traefik middleware сначала задаёт канонический Host, затем применяет
+общий для DoH-router бюджет 20 req/s, burst 40 и 8 in-flight requests. Это lab
+параметры, не доказанный production capacity threshold. AGH `dns.ratelimit:20`
+ограничивает только UDP. DoH-router не пишет access logs; lab field allowlist
+защищает также denied URL, сохраняя журнал соседнего сайта. Production logging
+этим не принят.
+
+HAProxy сохраняется ради global `maxconn 256` и idle timeouts 60s. Native Traefik
+TCP inFlightConn ограничивает по IP; dialTimeout не заменяет idle timeout.
+Включение file provider общего edge отдельно не разрешено.
 
 ## Воспроизведение
 
-Нужны Python 3.11+ (stdlib), Docker Engine и Compose v2 на **разрешённом Linux
-полигоне**. Этот проект не устанавливает Docker и не меняет системный DNS.
+Нужны Python 3.11+ (stdlib), Docker Engine/Compose v2 на разрешённом Linux
+полигоне. Docker и системный DNS скриптом не устанавливаются/не изменяются.
 
 ```sh
 python3 -m unittest discover -s tests -v
-# Только в отдельной disposable копии на полигоне; не production:
+# Только disposable копия на разрешённом полигоне:
 timeout --signal=TERM --kill-after=30 480 bash tools/run_lab.sh
 ```
 
-Стенд фиксирует reviewed исходные имена, получает для проверки публичные A
-origin, создаёт случайный временный ID и рендерит Compose. Разрешены внешние DNS
-и TLS к двум выбранным origin; учётных записей, GitHub-токенов и production data
-в стенде нет. Разрешение A в этом скрипте относится к тесту, а не к автоматическому
-обновлению production. Там каждый набор origin проверяется вручную.
+Четыре digest-pinned образа: [images.lock.json](config/images.lock.json).
+Собственные сети, localhost 18443/18444; на контейнер 128 MiB/0.5 CPU/100 PID,
+логи 2×5 MiB. Разрешены внешние DNS/TLS к двум origin; production data и аккаунты
+продуктов не нужны. Случайный ClientID и публичный admin fixture — только для lab.
+Docker socket `:ro` остаётся привилегированным доступом к daemon API.
 
-Compose использует собственную сеть и localhost-порты 18443/18444, четыре
-digest-pinned образа, максимум 128 MiB/0.5 CPU/100 PID на контейнер, логи 2×5 MiB.
-В DNS-контейнере используется UID/GID оператора; writable каталог конфигурации
-нужен для штатной atomic-записи AGH. Весь файл конфигурации не монтируется отдельно.
-Нативный бинарник образа требует NET_BIND_SERVICE; остальные capabilities удалены.
-Никакие сети/тома существующих приложений не подключаются. Docker socket у
-тестового Traefik чувствителен даже при `:ro`: это fixture для доверенного полигона.
+Runner отвергает занятые порты и существующий task project; EXIT trap удаляет
+свои контейнеры/сети и сравнивает существовавшие container IDs. `.local/` и образы
+остаются для readback; disposable копию удаляют после сбора. Не удаляйте следы
+незакрытого прогона вслепую. Результаты изменённого кода и cleanup фиксируются в
+[refactor acceptance](docs/reports/2026-11-06/refactor-acceptance.md).
+[Первый acceptance](docs/reports/2026-11-06/acceptance.md) и
+[PR2 follow-up](docs/reports/2026-11-06/review-followup.md) относятся к прежним
+кандидатам и не доказывают результат текущего.
 
-`run_lab.sh` прекращает работу при существующем task-project/следах незакрытого
-прогона; не удаляйте их вслепую. EXIT trap собирает логи, удаляет свой Compose
-project/network/volumes и сравнивает ID существовавших контейнеров. Исходники и
-`.local/` остаются для readback/сбора; после сбора удалить только disposable
-копию эксперимента. Образы остаются в Docker cache, без работающих сервисов.
-
-Для ручного рендера без запуска:
+Рендер без запуска требует нового output directory:
 
 ```sh
-python3 tools/render.py --settings .local/settings.json --origins .local/origins.json
-docker compose -f generated/compose.lab.json config -q
+python3 tools/render.py --settings .local/settings.json --origins .local/origins.json --out .local/candidate-001
+docker compose -f .local/candidate-001/compose.lab.json config -q
 ```
 
-[settings.example.json](config/settings.example.json) содержит вымышленные
-сетевые сведения и нерабочий секрет. Замените ID на криптографически случайный
-32–64-символьный lowercase hex; добавьте все собственные домены и публичные IP в
-запреты. `origins.json` — объект `точный-домен: проверенный-публичный-IPv4` для
-каждого имени из pilot.json, без лишних записей. Render отвергает private,
-reserved, metadata, multicast, IPv6, собственный ingress и provider-service IP.
-Не отправляйте `.local/settings.json` и generated/ в PR: там ClientID.
+Повторная запись в существующий `--out` завершается ошибкой. Полный комплект
+публикуется rename из соседнего staging directory; это не атомарное обновление
+работающих сервисов. Hash приватных settings/файлов хранится отдельно: snapshot
+SHA покрывает rules/origins, а не все settings.
 
-DoH router принимает только `/dns-query` и `/dns-query/<32–64 lowercase hex>`;
-анонимный/неизвестный ID по-прежнему отклоняет сам AGH. `dns.ratelimit: 20`
-ограничивает UDP DNS, **не DoH**. Перед production нужен отдельный план лимитов
-DoH; IP прокси в `allowed_clients` для этого не добавлять. AGH management/API
-без пароля нельзя помещать в общую сеть приложений: нужна узкая сеть
-Traefik↔AGH либо отдельно одобренная защита management.
+[settings.example.json](config/settings.example.json) содержит placeholders.
+Задайте случайные lowercase-hex ClientIDs длиной 32–64, `admin_username`,
+`admin_password_hash`, свои зоны и public IP. Получите bcrypt штатным
+`htpasswd -Bni <admin_username>` с безопасным вводом и сохраните hash после `:` в
+приватные settings. Не передавайте пароль аргументом и не выводите секреты в
+общий transcript. Runtime Python bcrypt dependency не нужен. Публичный fixture
+`lab-only-change-me` никогда не используется в production.
 
-Нативная Windows-проверка отдельно: скачать
-[официальный AGH v0.107.80](https://github.com/AdguardTeam/AdGuardHome/releases/tag/v0.107.80),
-сверить ZIP с release `checksums.txt`, распаковать в `.local/agh/`, затем:
+Windows: скачайте [официальный AGH v0.107.80](https://github.com/AdguardTeam/AdGuardHome/releases/tag/v0.107.80),
+сверьте archive checksum с release `checksums.txt`, распакуйте в `.local/agh/`.
+Через приватный редактор создайте `.local/native-admin-password` с lab-only
+fixture паролем, ограничьте доступ к файлу. При свободных портах 13000/15353:
 
 ```powershell
-python tools/test_native_agh.py --binary .local/agh/AdGuardHome/AdGuardHome.exe
+python tools/test_native_agh.py --binary .local/agh/AdGuardHome/AdGuardHome.exe --admin-password-file .local/native-admin-password
 ```
 
-Скрипт использует localhost fixture и порты 13000/15353, не устанавливает службу,
-не меняет DNS клиента и завершает свои процессы. Перед запуском убедиться, что
-порты свободны. Бинарный checksum и команды приведены в отчёте.
+Harness использует localhost upstream fixture и завершает свои процессы; служба
+и DNS клиента не меняются. Не коммитьте settings, generated configs, пароли,
+ClientID URL, ключи и private evidence.
 
 ## Перед production
 
-Нужна отдельно одобренная private Compose-интеграция: только новые DNS/relay
-контейнеры и labels существующего Traefik, без второго public 443, catch-all или
-file provider. У production Traefik уже включён access log: DoH URL содержит
-секрет, поэтому до активации обязательна проверка исключения/редакции этих путей
-с согласованным владельцем логирования. Перезапуск общего Traefik не разрешён
-этим пилотом. Имена ingress/certresolver/network и SSH-доступ в репозиторий не
-публикуются.
+Отдельно согласуются private Compose/labels, сертификат, узкая сеть, admin
+credentials, origin snapshot, logging, limits и rollback window. Второй public
+443, catch-all, file provider и restart общего edge не входят в пилот. DNS ClientID
+не защищает public relay от прямого доступа к разрешённым SNI; shared-origin
+domain fronting остаётся ограничением. Product/device приёмка — отдельный этап.
 
 [Архитектура](docs/architecture.md) · [безопасность](docs/security.md) ·
-[откат и cache/drain](docs/rollback.md) · [DNS/клиенты](docs/dns-research.md) ·
-[выбор Relay](docs/relay-research.md) · [реестры](docs/registry-research.md).
+[откат](docs/rollback.md) · [DNS/клиенты](docs/dns-research.md) ·
+[Relay research](docs/relay-research.md) · [реестры](docs/registry-research.md).

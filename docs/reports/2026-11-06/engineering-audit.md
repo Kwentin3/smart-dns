@@ -6,6 +6,10 @@
 совпадают с хешами проверенного архива. Это аудит пригодности и предпосылок,
 а не ещё одно заключение о возможности merge и не разрешение production.
 
+Это историческое состояние `fa65c017`. Последующие исправления и повторная
+приёмка описаны в [результате рефакторинга](refactor-acceptance.md); исходные
+находки не следует переносить на изменённый код без сверки версии.
+
 PASS относится только к явно названной проверке. FAIL означает установленное
 несоответствие указанному свойству; отсутствие проверки обозначено NOT_TESTED.
 В этом аудите не запускались production-команды, новый Linux-стенд или модельные
@@ -15,7 +19,7 @@ PASS относится только к явно названной провер
 ## 1. Что обещаем пользователю?
 
 **PASS: технический TLS-маршрут. NOT_TESTED: работа ChatGPT/Claude как продуктов.**
-В [probe.py:51](../../../tools/probe.py#L51) проверяется TLS handshake с CA/hostname,
+В [probe.py:51](https://github.com/Kwentin3/smart-dns/blob/fa65c017bf8cd728f477c4f1946884cd01ec1c9a/tools/probe.py#L51) проверяется TLS handshake с CA/hostname,
 без HTTP-запроса, входа, сообщения или файла. Два точных имени не доказывают
 полноту login/CDN/API-зависимостей. Утверждение «сервисы работают» пока необоснованно.
 
@@ -44,7 +48,7 @@ unknown ClientID, UDP drop и TCP REFUSED на localhost. [Linux receipt](review
 ## 3. Кто управляет AGH?
 
 **FAIL: административная аутентификация отсутствует. NOT_TESTED: захват из peer-контейнера.**
-[render.py:64](../../../tools/render.py#L64) задаёт HTTP `0.0.0.0:3000` и `users: []`;
+[render.py:64](https://github.com/Kwentin3/smart-dns/blob/fa65c017bf8cd728f477c4f1946884cd01ec1c9a/tools/render.py#L64) задаёт HTTP `0.0.0.0:3000` и `users: []`;
 у сервисов одна неразделённая Compose-сеть. Внешний фильтр URL не защищает прямое
 обращение peer к API. В pinned AGH [проверка аутентификации отключена без users](https://github.com/AdguardTeam/AdGuardHome/blob/003d6e1e15e04127f6d6d5e2f5c1aa843130752a/internal/home/authhttp.go#L487).
 [Нативный access/set](https://github.com/AdguardTeam/AdGuardHome/blob/003d6e1e15e04127f6d6d5e2f5c1aa843130752a/internal/dnsforward/access.go#L242)
@@ -59,7 +63,7 @@ unknown ClientID, UDP drop и TCP REFUSED на localhost. [Linux receipt](review
 ## 4. Где может утечь ClientID?
 
 **PASS: секрет не найден в проверенных lab-логах. NOT_TESTED: production logging/backup.**
-[probe_review.py](../../../tools/probe_review.py) проверяет отсутствие временного ID
+[probe_review.py](https://github.com/Kwentin3/smart-dns/blob/fa65c017bf8cd728f477c4f1946884cd01ec1c9a/tools/probe_review.py) проверяет отсутствие временного ID
 в actual edge logs. Это не проверка всех ошибок, tracing, браузерных экспортов и
 бэкапов. В private evidence ID намеренно сохраняется в settings и effective AGH
 config; в Linux-архиве settings имеет mode 0664, config — 0600. Это не доказательство
@@ -77,7 +81,7 @@ DoH-журналы. Для private inputs/архивов достаточно о
 ## 5. Что ограничивает злоупотребления?
 
 **PASS: лимиты новых lab-контейнеров. NOT_TESTED: нагрузка, безопасная для Hermes.**
-[render.py:74](../../../tools/render.py#L74) и [:87](../../../tools/render.py#L87)
+[render.py:74](https://github.com/Kwentin3/smart-dns/blob/fa65c017bf8cd728f477c4f1946884cd01ec1c9a/tools/render.py#L74) и [:87](https://github.com/Kwentin3/smart-dns/blob/fa65c017bf8cd728f477c4f1946884cd01ec1c9a/tools/render.py#L87)
 задают relay maxconn 256/timeouts, по 128 MiB/0.5 CPU/100 PID и ротацию логов.
 По [pinned limiter](https://github.com/AdguardTeam/dnsproxy/blob/acf2b30e05202e171bbbaf4a3176ea07edb964b3/ratelimit/ratelimit.go#L51)
 `dns.ratelimit:20` ограничивает только UDP; DoH throttling нет. Обладатель ID может
@@ -108,7 +112,7 @@ HTTP fixture проверен до удаления; after-delete пользов
 ## 7. Сколько живёт фиксированный origin?
 
 **PASS: адрес публичный и текущий TLS проверен. NOT_TESTED: срок, регион и refresh.**
-[run_lab.sh:19](../../../tools/run_lab.sh#L19) выбирает первый отсортированный public A;
+[run_lab.sh:19](https://github.com/Kwentin3/smart-dns/blob/fa65c017bf8cd728f477c4f1946884cd01ec1c9a/tools/run_lab.sh#L19) выбирает первый отсортированный public A;
 срок пригодности и географическая политика не проверяются. Сертификат может быть
 исправен при HTTP geoblock или сломанном продукте. DNS/CDN change не расширит
 направления relay, но может прекратить работу. Гарантированного срока нет.
@@ -122,9 +126,9 @@ resolver с произвольным fallback не требуется.
 
 **PASS: генерация из одного списка. FAIL: безопасная перезапись существующего output.
 NOT_TESTED: исполненный update/restore.**
-[pilot.json](../../../rules/pilot.json) — authority; реестры только предложения.
-[Контракт](../../../tests/test_render.py#L42) сравнивает фактические три host sets.
-При этом [render.py:108](../../../tools/render.py#L108) пишет файлы по очереди.
+[pilot.json](https://github.com/Kwentin3/smart-dns/blob/fa65c017bf8cd728f477c4f1946884cd01ec1c9a/rules/pilot.json) — authority; реестры только предложения.
+[Контракт](https://github.com/Kwentin3/smart-dns/blob/fa65c017bf8cd728f477c4f1946884cd01ec1c9a/tests/test_render.py#L42) сравнивает фактические три host sets.
+При этом [render.py:108](https://github.com/Kwentin3/smart-dns/blob/fa65c017bf8cd728f477c4f1946884cd01ec1c9a/tools/render.py#L108) пишет файлы по очереди.
 
 Новый локальный fault injection: сгенерирован старый набор из двух hosts; в его
 временном output `haproxy.cfg` заменён каталогом; запущен render нового набора с
@@ -137,7 +141,7 @@ mixed output, а не утверждение о production-инциденте. R
 перед использованием. Альтернатива — сохранить строго ручной staging с запретом
 активации после ошибки. Нужен один намеренно неудачный update/restore в стенде,
 не новый deployment controller. `snapshot.sha256` охватывает лишь rules/origins
-([:58](../../../tools/render.py#L58)); ClientID, upstream, relay A и images могут
+([:58](https://github.com/Kwentin3/smart-dns/blob/fa65c017bf8cd728f477c4f1946884cd01ec1c9a/tools/render.py#L58)); ClientID, upstream, relay A и images могут
 измениться без смены SHA. Это документированный rule fingerprint, не идентичность
 всего поколения. Для приёмки нужны private hashes inputs/output и effective AGH
 rules/Docker labels, как в сохранённом расширенном receipt.
@@ -194,15 +198,15 @@ provider получает backend IP контейнера, а не произв�
    не вводить второго владельца пользователей.
 2. Запретить in-place render и читать effective configuration после изменения;
    не создавать транзакционный deployment framework.
-3. Исправить точность evidence: [run_lab.sh:75](../../../tools/run_lab.sh#L75)
+3. Исправить точность evidence: [run_lab.sh:75](https://github.com/Kwentin3/smart-dns/blob/fa65c017bf8cd728f477c4f1946884cd01ec1c9a/tools/run_lab.sh#L75)
    inspect'ит tags, хотя запуск идёт по digest. Минимум — inspect image IDs
    работающих контейнеров/locked references. Факт запуска неправильного образа
    **не установлен**; текущие сохранённые digests совпали с lock.
-4. Сузить название `direct-unmodified`: [probe.py:40](../../../tools/probe.py#L40)
+4. Сузить название `direct-unmodified`: [probe.py:40](https://github.com/Kwentin3/smart-dns/blob/fa65c017bf8cd728f477c4f1946884cd01ec1c9a/tools/probe.py#L40)
    для subdomain допускает даже SERVFAIL, если нет relay IP. Для этого случая
    доказано «не увидели rewrite», а не неизменность полного ответа. Минимум —
    проверить deterministic fixture answer или назвать результат точнее.
-5. Устранить окно cleanup в [test_native_agh.py:33](../../../tools/test_native_agh.py#L33):
+5. Устранить окно cleanup в [test_native_agh.py:33](https://github.com/Kwentin3/smart-dns/blob/fa65c017bf8cd728f477c4f1946884cd01ec1c9a/tools/test_native_agh.py#L33):
    thread уже стартует, а `try/finally` начинается после чтения/compile/write.
    Ошибка этого setup оставит thread вне cleanup. Это вывод по коду, ветка не
    воспроизводилась. Минимум — охватить setup существующим finally. Параллельные

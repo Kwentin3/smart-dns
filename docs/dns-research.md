@@ -1,5 +1,26 @@
 # DNS research: first offline iteration
 
+Current configuration is owned by `tools/render.py` and the
+[refactor GOAL](refactor.md), with results in
+[refactor acceptance](reports/2026-11-06/refactor-acceptance.md). The source review
+and localhost snippet below are historical research, not current deployment
+configuration. Current candidate requires native `admin_username`/bcrypt
+`admin_password_hash`, a narrow edge-to-AGH network and ClientID-only admission.
+AGH keeps its required plain listener internal/unpublished; do not copy the
+historical `serve_plain_dns: false` sample.
+
+AGH `dns.ratelimit` is UDP-only. Current native Traefik middleware normalizes Host,
+then applies rateLimit 20/s burst 40 and inFlightReq 8. Matched DoH-router access
+logs are disabled; denied secret URLs require safe global lab fields and separate
+production logging acceptance. See [security](security.md) for evidence/limits.
+
+The Windows harness now requires `--admin-password-file` containing the public
+disposable fixture password `lab-only-change-me`; create it through a private
+editor outside Git. Never use it for production. Prepare real admin hashes with
+existing native bcrypt tooling, without a new Python runtime dependency. Read
+new native/GET/revocation/admin results from refactor acceptance rather than
+inferring them from the older source-review statuses below.
+
 Research date: 2026-11-06. Scope: primary-source inspection and bounded native Windows checks; no server changes. Source-backed findings and runtime findings are distinguished below. Final receipts and remaining gates belong in the [acceptance report](reports/2026-11-06/acceptance.md).
 
 ## Pinned owner and version
