@@ -4,6 +4,13 @@
 Это текущая запись продуктовой задачи; [рефакторинг](refactor.md) остаётся
 завершённым инфраструктурным этапом. Product GOAL **не завершён**.
 
+Текущий технический результат: готовый index 2019 source lists, выбранные definitions,
+8 reviewed namespaces ChatGPT/Claude на production, actual status `matches` и 96
+внешних DoH/DoT/origin-TLS checks. Новые roots/unsupported predicates остаются на
+review. Workflow подготовлен к доставке в default branch и фактическому запуску;
+реальные устройства/смена сети и функции приложений ещё не приняты. Подробная
+проверяемая граница — [registry acceptance](reports/2026-11-06/registry-acceptance.md).
+
 ## Уточнённый первый сценарий
 
 Владелец указал Zyxel Keenetic Ultra с DoH и Huawei P50 со штатным DoT,
@@ -315,5 +322,8 @@ index, selected definitions, CLI/projection и единый ежедневный
 выбранными сервисами, доставки workflow в default branch и реальной приёмки
 устройств/основных функций. Mixed-case SNI admission через оба hop доказан отдельно;
 TLS timeout воспроизведён прямым запросом к тому же origin IP и имеет неизвестную
-внешнюю причину. Обычные lowercase подключения проходят. Production пока остаётся
-на пяти exact hosts; новый status-only правильно показывает desired/actual drift.
+внешнюю причину. Обычные lowercase подключения проходят. Исправленный оператор
+`5a5ab39` применил восемь reviewed namespaces; status-only показал переход от
+desired/actual drift к matches, внешние 96 checks PASS. Первый отказ после rules
+write автоматически вернул прежнее поколение с readback; причина сверки Compose
+literal-dollar labels устранена. Admission/protected containers сохранены.

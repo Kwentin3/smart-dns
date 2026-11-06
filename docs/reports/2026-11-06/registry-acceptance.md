@@ -40,9 +40,9 @@ evidence, not evidence that its service works through this VPS.
 | Full unit suite | 89 tests, including native-word-budget, Compose literal-dollar labels and read-only actual-status contracts | PASS |
 | Actual Traefik / HAProxy suffix routing | 33 checks: public-CA origin TLS through edge and direct relay, actual-SNI own HTTPS, selected A/AAAA/SVCB/HTTPS, excluded names and label-boundary lookalikes | PASS; cleanup PASS |
 | Bounded policy scale | Native HAProxy syntax in dynamic and fixed-origin modes and observed Traefik TCP routing for 2048 exact patterns; edge memory 19.21 MiB under its 128 MiB limit | PASS parsing/resource smoke; traffic capacity not claimed |
-| Native actual status | Read-only production run found the mounted five-host generation and correctly reported four desired-versus-actual discrepancies | PASS for drift detection; matching state after apply still pending |
+| Native actual status | Before apply: mounted five-host generation and four desired/actual discrepancies. After apply: mounted eight-namespace generation, matching rules/image/labels/bytes, no findings | PASS |
 | Scheduled source workflow on the default branch | Daily collector and one proposal PR, candidate identity checks, contracts before publication | Pending activation/run |
-| This revision in production | Earlier five exact hosts remain the proven baseline | NOT_TESTED |
+| This revision in production | Corrected operator `5a5ab39`, eight approved namespaces; native apply/readback preserved admission and all protected containers. External verified DoH/DoT and origin TLS: 96 checks | PASS technical rollout; application/device acceptance remains open |
 
 Exact-only legacy smoke/lab consumers now use the same registry projection and
 refuse active suffix policies. They cannot silently validate a smaller manual
@@ -96,7 +96,15 @@ native rules. Restore readback passed. The verifier had compared Compose's `$$`
 regex escape to Docker's literal `$`; it now compares the native representation.
 The source artifact comparison remains exact. A suffix-bundle regression also
 rejects an actual changed regex, rather than relaxing route validation.
-Successful application of the corrected operator is still pending.
+The corrected operator `5a5ab39` subsequently applied successfully. Native
+readback independently reports `matches` for desired revision 4, generation
+`424c3ed273975de9e79ff49d5e5f94f915f5655b6f343fc31a7c6765e06fa4ce`.
+Actual Docker inspection confirmed the literal-dollar conversion. Admission and
+every protected host container remained unchanged. From outside the VPS, 96
+checks passed: verified DoH/DoT rewriting and A/AAAA/SVCB/HTTPS behavior across
+all eight namespaces, selected login/API/assets/file children, positive ordinary
+DNS, unauthorized-client refusal and ten public-CA origin TLS handshakes. These
+probes do not log in, send messages or upload a user file.
 
 ## Automation boundary
 
