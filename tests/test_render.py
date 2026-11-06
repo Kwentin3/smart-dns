@@ -9,7 +9,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from tools.render import compile_config, write_new
+from tools.render import approved_rules, compile_config, write_new
 
 
 # Public disposable fixture only; never a deployment credential.
@@ -37,15 +37,26 @@ class RenderContractTests(unittest.TestCase):
     def render(self):
         return compile_config(self.rules, self.settings, self.origins)
 
+    def catalog(self):
+        return {
+            "revision": 2, "domain_policy": "exact",
+            "excluded_zones": self.rules["excluded_zones"], "excluded_domains": {},
+            "services": [{"id": "pilot", "name": "Pilot", "enabled": True,
+                          "reason": "Offline test candidate", "domains": list(self.rules["domains"]),
+                          "source": "v2fly-service-catalog"}],
+        }
+
     def test_checked_in_pilot_and_source_pins(self):
         root = Path(__file__).resolve().parents[1]
-        rules = json.loads((root / "rules/pilot.json").read_text(encoding="utf-8"))
-        compile_config(rules, self.settings, {host: "1.1.1.1" for host in rules["domains"]})
+        from tools.render import catalog_rules
+        rules = catalog_rules(json.loads((root / "rules/pilot.json").read_text(encoding="utf-8")),
+                              json.loads((root / "rules/registry.json").read_text(encoding="utf-8")))
+        compile_config(rules, {**self.settings, "origin_dns": ["9.9.9.9"]})
         sources = json.loads((root / "rules/sources.json").read_text(encoding="utf-8"))
-        self.assertIn("proposal-only", sources["policy"])
+        self.assertEqual(sum(source["id"] == "metacubex-sing" for source in sources["sources"]), 1)
         for source in sources["sources"]:
             self.assertRegex(source["commit"], r"^[0-9a-f]{40}$")
-            self.assertIn("/blob/" + source["commit"] + "/", source["reference"])
+            self.assertTrue(any("/" + kind + "/" + source["commit"] + "/" in source["reference"] for kind in ("blob", "tree")))
             self.assertIn("license", source)
             self.assertNotEqual(source["use"], "import")
 
@@ -56,7 +67,7 @@ class RenderContractTests(unittest.TestCase):
         self.assertTrue(all(parsed_dns), dns_rules)
         dns_hosts = {match[1] for match in parsed_dns}
         haproxy = artifacts["haproxy.cfg"]
-        relay_hosts = set(re.findall(r"^  acl host_\d+ req\.ssl_sni,lower -m str (\S+)$", haproxy, re.MULTILINE))
+        relay_hosts = set(re.findall(r"^  acl policy_allowed req\.ssl_sni,lower -m str (\S+)$", haproxy, re.MULTILINE))
         tcp_rule = artifacts["compose.lab.json"]["services"]["relay"]["labels"]["traefik.tcp.routers.sd-relay.rule"]
         edge_hosts = set(re.findall(r"HostSNI\(`([^`]+)`\)", tcp_rule))
         expected = set(self.rules["domains"])
@@ -175,7 +186,7 @@ class RenderContractTests(unittest.TestCase):
 
     def test_write_failure_leaves_no_candidate_or_staging_and_preserves_accepted(self):
         artifacts = self.render()
-        real_write = Path.write_text
+        real_open = Path.open
         writes = []
 
         def fail_second_write(path, *args, **kwargs):
@@ -183,7 +194,7 @@ class RenderContractTests(unittest.TestCase):
             if len(writes) == 2:
                 self.assertTrue(writes[0].is_file())
                 raise OSError("simulated storage failure")
-            return real_write(path, *args, **kwargs)
+            return real_open(path, *args, **kwargs)
 
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
@@ -191,7 +202,7 @@ class RenderContractTests(unittest.TestCase):
             write_new(artifacts, accepted)
             before = {path.relative_to(accepted): path.read_bytes() for path in accepted.rglob("*") if path.is_file()}
             candidate = root / "candidate"
-            with patch.object(Path, "write_text", fail_second_write):
+            with patch.object(Path, "open", fail_second_write):
                 with self.assertRaisesRegex(OSError, "simulated storage failure"):
                     write_new(artifacts, candidate)
             self.assertEqual(len(writes), 2)
@@ -203,7 +214,7 @@ class RenderContractTests(unittest.TestCase):
         renderer = Path(__file__).resolve().parents[1] / "tools/render.py"
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
-            for name, value in (("rules", self.rules), ("settings", self.settings), ("origins", self.origins)):
+            for name, value in (("rules", self.catalog()), ("settings", self.settings), ("origins", self.origins)):
                 (root / (name + ".json")).write_text(json.dumps(value), encoding="utf-8")
             out = root / "output"
             command = [sys.executable, str(renderer), "--rules", str(root / "rules.json"), "--settings", str(root / "settings.json"), "--origins", str(root / "origins.json"), "--out", str(out)]
@@ -252,8 +263,8 @@ class RenderContractTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             compile_config(self.rules, {**self.settings, "own_public_ipv4": ["1.1.1.1"]}, self.origins)
 
-    def test_rejects_empty_unsorted_duplicate_or_oversized_domains(self):
-        for domains in [[], ["claude.ai", "chatgpt.com"], ["chatgpt.com", "chatgpt.com"], sorted(f"host{i:02d}.example.org" for i in range(21))]:
+    def test_rejects_unsorted_duplicate_or_oversized_domains(self):
+        for domains in [["claude.ai", "chatgpt.com"], ["chatgpt.com", "chatgpt.com"], sorted(f"host{i:04d}.example.org" for i in range(2049))]:
             with self.subTest(domains=domains):
                 rules = {**self.rules, "domains": domains}
                 with self.assertRaises(ValueError):
@@ -281,7 +292,9 @@ class RenderContractTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
             (root / "rules").mkdir()
-            (root / "rules/pilot.json").write_text(json.dumps({**self.rules, "domains": ["*.chatgpt.com"]}))
+            invalid_catalog = self.catalog()
+            invalid_catalog["services"][0]["domains"] = ["*.chatgpt.com"]
+            (root / "rules/pilot.json").write_text(json.dumps(invalid_catalog))
             (root / "password").write_text("lab-only-change-me")
             code = "\n".join([
                 "import sys", "from pathlib import Path",

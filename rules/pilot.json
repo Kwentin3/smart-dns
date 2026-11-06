@@ -1,6 +1,46 @@
 {
-  "revision": 1,
-  "domains": ["chatgpt.com", "claude.ai"],
-  "excluded_zones": ["google.com", "microsoft.com", "localhost", "local", "internal", "test", "invalid", "example", "example.com", "example.net", "example.org"],
-  "note": "Exact hosts only; service login/CDN coverage is deliberately NOT accepted yet. Sources are suggestions, not executable configuration."
+  "revision": 4,
+  "domain_policy": "exact-and-suffix",
+  "services": [
+    {
+      "id": "chatgpt",
+      "name": "ChatGPT",
+      "enabled": true,
+      "reason": "Reviewed ChatGPT login/API/assets/file namespaces from the ready registry and official network guidance; device/application acceptance pending",
+      "domains": ["auth.openai.com", "auth0.openai.com", "chat.openai.com", "chatgpt.com"],
+      "source": "metacubex-sing",
+      "source_path": "geo/geosite/openai.json",
+      "upstream": {
+        "source": "metacubex-sing",
+        "list": "openai",
+        "approved_scope": {"exact": [], "suffix": ["chatgpt.com", "oaistatic.com", "oaistatsig.com", "oaiusercontent.com", "openai.com"]},
+        "accept_partial": true
+      },
+      "references": [
+        "https://help.openai.com/en/articles/7426629-why-cant-i-log-in-to-chatgpt",
+        "https://help.openai.com/en/articles/9247338-network-recommendations-for-chatgpt-errors-on-web-and-apps"
+      ]
+    },
+    {
+      "id": "claude",
+      "name": "Claude",
+      "enabled": true,
+      "reason": "Reviewed Claude/API/content namespaces from the ready registry; real application use remains NOT_TESTED",
+      "domains": ["claude.ai"],
+      "source": "metacubex-sing",
+      "source_path": "geo/geosite/anthropic.json",
+      "upstream": {
+        "source": "metacubex-sing",
+        "list": "anthropic",
+        "approved_scope": {"exact": [], "suffix": ["anthropic.com", "claude.ai", "claudeusercontent.com"]}
+      },
+      "references": [
+        "https://support.claude.com/en/articles/13198485-enforce-network-level-access-control-with-tenant-restrictions",
+        "https://support.claude.com/es/articles/13065128-controles-de-administrador-de-claude-en-chrome"
+      ]
+    }
+  ],
+  "excluded_domains": {},
+  "excluded_zones": ["localhost", "local", "internal", "test", "invalid", "example", "example.com", "example.net", "example.org"],
+  "note": "Desired policy, not proof of applied state. Only reviewed source namespaces are imported; other roots and unsupported regex remain visible/pending. Google/Microsoft have no blanket vendor ban: they remain direct unless explicitly selected. Native own-zone and destination-IP guards still apply."
 }

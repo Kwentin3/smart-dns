@@ -9,7 +9,7 @@ import threading
 import time
 
 from probe import check_dns, check_management, check_revocation
-from render import ROOT, compile_config
+from render import ROOT, catalog_rules, compile_config
 
 
 def main():
@@ -43,8 +43,11 @@ def main():
         folder.mkdir(parents=True, exist_ok=True)
         (folder / "work").mkdir(exist_ok=True)
         settings = {"doh_host": "dns.example.net", "relay_ipv4": "192.0.2.10", "client_ids": ["a" * 32], "own_zones": ["example.net"], "upstream_dns": [f"127.0.0.1:{upstream_port}"], "bootstrap_dns": [], "admin_username": admin["admin_username"], "admin_password_hash": admin["admin_password_hash"]}
-        rules = json.loads((ROOT / "rules/pilot.json").read_text())
-        config = compile_config(rules, settings, dict(zip(rules["domains"], ["1.1.1.1", "8.8.8.8"]))) ["agh-conf/AdGuardHome.yaml"]
+        registry_path = ROOT / "rules/registry.json"
+        registry = json.loads(registry_path.read_text(encoding="utf-8")) if registry_path.exists() else None
+        rules = catalog_rules(json.loads((ROOT / "rules/pilot.json").read_text(encoding="utf-8")), registry)
+        assert not rules.get("domain_suffixes"), "fixed native smoke requires separate suffix acceptance"
+        config = compile_config(rules, settings, {host: "1.1.1.1" for host in rules["domains"]})["agh-conf/AdGuardHome.yaml"]
         config["http"]["address"] = "127.0.0.1:13000"
         config["dns"]["bind_hosts"] = ["127.0.0.1"]
         config["dns"]["port"] = 15353

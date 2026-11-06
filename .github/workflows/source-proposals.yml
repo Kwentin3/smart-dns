@@ -1,0 +1,120 @@
+name: Community source proposals
+
+# Scheduled runs start only after this workflow reaches the default branch.
+on:
+  workflow_dispatch:
+    inputs:
+      expected_source:
+        description: Public registry owner/repository (fixed supported provider)
+        required: true
+        default: MetaCubeX/meta-rules-dat
+  schedule:
+    - cron: '23 6 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: service-registry-proposal
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    if: github.ref_name == github.event.repository.default_branch && (github.event_name != 'workflow_dispatch' || inputs.expected_source == 'MetaCubeX/meta-rules-dat')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Check accepted contracts
+        run: python3 -m unittest discover -s tests -v
+      - name: Collect pinned broad index and selected native JSON definitions
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 tools/source_proposals.py
+      - name: Upload atomic proposal with candidate registry and license attribution
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: service-registry-proposal
+          path: .local/source-proposals/latest.json
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    needs: collect
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: service-registry-proposal
+          path: .local/source-proposals
+      - name: Validate and extract candidate against current accepted inputs
+        id: candidate
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          from tools.source_proposals import checksum
+          directory = Path('.local/source-proposals')
+          proposal = json.loads((directory / 'latest.json').read_text())
+          current = json.loads(Path('rules/registry.json').read_text())
+          candidate = proposal['candidate_registry']
+          assert proposal['accepted_registry_sha256'] == checksum(current), 'accepted registry moved; rerun collection'
+          assert proposal['catalog_sha256'] == checksum(json.loads(Path('rules/pilot.json').read_text())), 'catalog moved; rerun collection'
+          assert proposal['sources_sha256'] == checksum(json.loads(Path('rules/sources.json').read_text())), 'source policy moved; rerun collection'
+          assert proposal['candidate_registry_sha256'] == checksum(candidate), 'candidate artifact identity mismatch'
+          assert candidate['source']['license'] == 'GPL-3.0' and candidate['source']['license_text']
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('changed=' + str(current != candidate).lower() + '\n')
+          (directory / 'candidate_registry.json').write_text(json.dumps(candidate, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          if current != candidate:
+              Path('rules/registry.json').write_text(json.dumps(candidate, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+              body = 'Community service registry update: ' + proposal['proposed_commit'] + '\n\n'
+              body += 'Index additions/removals/changes: ' + '/'.join(str(len(proposal['index_changes'][key])) for key in ('added', 'removed', 'changed')) + '\n\n'
+              for name, changes in proposal['selected_rule_changes'].items():
+                  body += name + ': ' + ', '.join(kind + ' +' + str(len(changes[kind]['added'])) + '/-' + str(len(changes[kind]['removed'])) for kind in ('exact', 'suffix', 'unsupported')) + '\n'
+              body += '\n'
+              body += 'Local service preferences, exclusions and runtime are unchanged. Review new roots/scopes and unsupported predicates before acceptance.\n\n'
+              body += 'Collector verified pinned blobs and native JSON; candidate contracts run in this workflow. Bot PR creation does not trigger an independent PR CI run. No automatic merge or deployment. Full diff/license evidence is attached to this workflow run.\n'
+              (directory / 'pr-body.md').write_text(body, encoding='utf-8')
+          PY
+      - name: Check candidate contracts before publishing
+        if: steps.candidate.outputs.changed == 'true'
+        run: |
+          python3 -m unittest discover -s tests -v
+          echo 'Candidate contracts passed in this trusted update workflow; not independent PR-triggered CI.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Update the single proposal branch and PR
+        if: steps.candidate.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          branch=automation/service-registry
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git fetch origin "refs/heads/$branch:refs/remotes/origin/$branch" || true
+          if git rev-parse --verify "origin/$branch" >/dev/null 2>&1; then
+            unexpected=$(git diff --name-only "origin/$DEFAULT_BRANCH...origin/$branch" | grep -v '^rules/registry.json$' || true)
+            test -z "$unexpected" || { echo 'Proposal branch contains unrelated changes; refusing overwrite'; exit 1; }
+          fi
+          git checkout -B "$branch"
+          git add -- rules/registry.json
+          git diff --cached --exit-code --quiet && exit 0
+          git commit -m 'Update community service registry proposal'
+          git push --force-with-lease origin "HEAD:refs/heads/$branch"
+          number=$(gh pr list --state open --head "$branch" --base "$DEFAULT_BRANCH" --json number --jq '.[0].number // empty')
+          if test -n "$number"; then
+            gh pr edit "$number" --title 'Update community service registry' --body-file .local/source-proposals/pr-body.md
+          else
+            gh pr create --head "$branch" --base "$DEFAULT_BRANCH" --title 'Update community service registry' --body-file .local/source-proposals/pr-body.md
+          fi
