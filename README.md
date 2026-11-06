@@ -1,5 +1,9 @@
 # Smart DNS
 
+Текущая продуктовая задача — [issue #3](https://github.com/Kwentin3/smart-dns/issues/3):
+[оценка разрывов и последовательность](docs/product-goal.md). Изолированный пилот
+ниже — техническая база; управляемый product и устройства ещё не приняты.
+
 Изолированный пилот [issue #1](https://github.com/Kwentin3/smart-dns/issues/1):
 AdGuard Home → точные HostSNI rules Traefik → HAProxy → фиксированный public IPv4.
 Production, Hermes и общий Traefik не изменяются. Список содержит только
@@ -15,6 +19,11 @@ rules, Traefik labels и HAProxy ACL/backends. [Внешние реестры](r
 запускает сервисы. Origins — reviewed numeric public IPv4:443; private/reserved,
 metadata, multicast, IPv6, собственный ingress и provider-service IP отвергаются.
 Runtime DNS/fallback нет.
+
+Для candidate доступен optional `settings.origin_dns: ["9.9.9.9"]`: штатный
+HAProxy разрешает одобренный SNI и проверяет выбранный IPv4 перед соединением.
+В этом режиме `--origins` не передают. Механизм проверен отдельно; полный
+интегрированный runtime пока не принят. По умолчанию остаётся fixed-origin режим.
 
 AGH использует native ClientID-only `allowed_clients` и обязательную admin-учётную
 запись с bcrypt hash. Узкая DNS-сеть соединяет только AGH и lab Traefik. Plain DNS
@@ -34,6 +43,23 @@ TCP inFlightConn ограничивает по IP; dialTimeout не заменя
 Включение file provider общего edge отдельно не разрешено.
 
 ## Воспроизведение
+
+В [сервисном каталоге](rules/pilot.json) меняют `services[].enabled`, причину,
+одобренные exact domains и `excluded_domains`. Это desired state. Renderer
+создаёт новый candidate; он не применяет его к работающему AGH и не подтверждает
+active state. `settings.client_ids` — только bootstrap: повторная запись полной
+конфигурации может вернуть уже отозванного клиента.
+
+Предложения обновлений community-источника:
+
+```sh
+python3 tools/source_proposals.py
+# .local/source-proposals/latest.json: raw diff + immutable SHA + MIT attribution
+```
+
+Scheduled/manual workflow только сохраняет этот артефакт; расписание требует
+default branch. Новые правила включаются после review. Ошибка fetch сохраняет
+предыдущий proposal и accepted каталог. Ни deploy, ни автоматический импорт не выполняются.
 
 Нужны Python 3.11+ (stdlib), Docker Engine/Compose v2 на разрешённом Linux
 полигоне. Docker и системный DNS скриптом не устанавливаются/не изменяются.

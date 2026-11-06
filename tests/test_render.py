@@ -9,7 +9,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from tools.render import compile_config, write_new
+from tools.render import approved_rules, compile_config, write_new
 
 
 # Public disposable fixture only; never a deployment credential.
@@ -37,9 +37,18 @@ class RenderContractTests(unittest.TestCase):
     def render(self):
         return compile_config(self.rules, self.settings, self.origins)
 
+    def catalog(self):
+        return {
+            "revision": 2, "domain_policy": "exact",
+            "excluded_zones": self.rules["excluded_zones"], "excluded_domains": {},
+            "services": [{"id": "pilot", "name": "Pilot", "enabled": True,
+                          "reason": "Offline test candidate", "domains": list(self.rules["domains"]),
+                          "source": "v2fly-service-catalog"}],
+        }
+
     def test_checked_in_pilot_and_source_pins(self):
         root = Path(__file__).resolve().parents[1]
-        rules = json.loads((root / "rules/pilot.json").read_text(encoding="utf-8"))
+        rules = approved_rules(json.loads((root / "rules/pilot.json").read_text(encoding="utf-8")))
         compile_config(rules, self.settings, {host: "1.1.1.1" for host in rules["domains"]})
         sources = json.loads((root / "rules/sources.json").read_text(encoding="utf-8"))
         self.assertIn("proposal-only", sources["policy"])
@@ -203,7 +212,7 @@ class RenderContractTests(unittest.TestCase):
         renderer = Path(__file__).resolve().parents[1] / "tools/render.py"
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
-            for name, value in (("rules", self.rules), ("settings", self.settings), ("origins", self.origins)):
+            for name, value in (("rules", self.catalog()), ("settings", self.settings), ("origins", self.origins)):
                 (root / (name + ".json")).write_text(json.dumps(value), encoding="utf-8")
             out = root / "output"
             command = [sys.executable, str(renderer), "--rules", str(root / "rules.json"), "--settings", str(root / "settings.json"), "--origins", str(root / "origins.json"), "--out", str(out)]
@@ -252,8 +261,8 @@ class RenderContractTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             compile_config(self.rules, {**self.settings, "own_public_ipv4": ["1.1.1.1"]}, self.origins)
 
-    def test_rejects_empty_unsorted_duplicate_or_oversized_domains(self):
-        for domains in [[], ["claude.ai", "chatgpt.com"], ["chatgpt.com", "chatgpt.com"], sorted(f"host{i:02d}.example.org" for i in range(21))]:
+    def test_rejects_unsorted_duplicate_or_oversized_domains(self):
+        for domains in [["claude.ai", "chatgpt.com"], ["chatgpt.com", "chatgpt.com"], sorted(f"host{i:02d}.example.org" for i in range(21))]:
             with self.subTest(domains=domains):
                 rules = {**self.rules, "domains": domains}
                 with self.assertRaises(ValueError):
@@ -281,7 +290,9 @@ class RenderContractTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
             (root / "rules").mkdir()
-            (root / "rules/pilot.json").write_text(json.dumps({**self.rules, "domains": ["*.chatgpt.com"]}))
+            invalid_catalog = self.catalog()
+            invalid_catalog["services"][0]["domains"] = ["*.chatgpt.com"]
+            (root / "rules/pilot.json").write_text(json.dumps(invalid_catalog))
             (root / "password").write_text("lab-only-change-me")
             code = "\n".join([
                 "import sys", "from pathlib import Path",

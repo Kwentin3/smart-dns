@@ -1,6 +1,27 @@
 {
-  "revision": 1,
-  "domains": ["chatgpt.com", "claude.ai"],
+  "revision": 2,
+  "domain_policy": "exact",
+  "services": [
+    {
+      "id": "chatgpt",
+      "name": "ChatGPT",
+      "enabled": true,
+      "reason": "Accepted TLS baseline only; login/CDN/uploads are NOT_TESTED",
+      "domains": ["chatgpt.com"],
+      "source": "v2fly-service-catalog",
+      "source_path": "data/openai"
+    },
+    {
+      "id": "claude",
+      "name": "Claude",
+      "enabled": true,
+      "reason": "Accepted TLS baseline only; product use is NOT_TESTED",
+      "domains": ["claude.ai"],
+      "source": "v2fly-service-catalog",
+      "source_path": "data/anthropic"
+    }
+  ],
+  "excluded_domains": {},
   "excluded_zones": ["google.com", "microsoft.com", "localhost", "local", "internal", "test", "invalid", "example", "example.com", "example.net", "example.org"],
-  "note": "Exact hosts only; service login/CDN coverage is deliberately NOT accepted yet. Sources are suggestions, not executable configuration."
+  "note": "This is desired service policy, not proof of applied state. Community suffix entries are discovery references; only these manually approved exact hosts are active candidates."
 }

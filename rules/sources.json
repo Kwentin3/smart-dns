@@ -4,6 +4,17 @@
   "policy": "proposal-only; never import or deploy upstream lists automatically",
   "sources": [
     {
+      "id": "v2fly-service-catalog",
+      "repository": "https://github.com/v2fly/domain-list-community",
+      "commit": "16fd8005d390470e8523745c9fa631c9e767cc61",
+      "paths": ["data/openai", "data/anthropic"],
+      "reference": "https://github.com/v2fly/domain-list-community/blob/16fd8005d390470e8523745c9fa631c9e767cc61/data/openai",
+      "license": "MIT",
+      "license_reference": "https://github.com/v2fly/domain-list-community/blob/16fd8005d390470e8523745c9fa631c9e767cc61/LICENSE",
+      "format": "geosite typed rules; bare/domain suffix, full exact, attributes, include, regexp, keyword",
+      "use": "proposal-source; no automatic import or activation"
+    },
+    {
       "id": "no-russia-hosts",
       "repository": "https://github.com/dartraiden/no-russia-hosts",
       "commit": "188e386c28b0207381b053a6701b0862af9ea7c9",

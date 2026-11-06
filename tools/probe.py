@@ -8,6 +8,10 @@ import ssl
 import struct
 import urllib.error
 import urllib.request
+if __package__:
+    from .render import approved_rules
+else:
+    from render import approved_rules
 import urllib.parse
 
 
@@ -131,7 +135,7 @@ def main():
     parser.add_argument("--check-revocation", action="store_true", help="Temporarily mutate and restore disposable fixture ACL")
     args = parser.parse_args()
     settings = json.load(open(args.settings, encoding="utf-8"))
-    domains = json.load(open(args.rules, encoding="utf-8"))["domains"]
+    domains = approved_rules(json.load(open(args.rules, encoding="utf-8")))["domains"]
     base = f"https://{args.host}:{args.edge_port}"
     rows = check_dns(base + "/dns-query", settings["doh_host"], settings["client_ids"][0], domains, settings["relay_ipv4"])
     for domain in domains:

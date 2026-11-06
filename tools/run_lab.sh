@@ -16,9 +16,9 @@ if ss -lntH '( sport = :18443 or sport = :18444 )' | grep -q .; then
 fi
 python3 - <<'PY'
 import json, pathlib, secrets, socket
-from tools.render import public_v4
+from tools.render import approved_rules, public_v4
 p=pathlib.Path('.local')
-rules=json.loads(pathlib.Path('rules/pilot.json').read_text())
+rules=approved_rules(json.loads(pathlib.Path('rules/pilot.json').read_text()))
 origins={}
 for host in rules['domains']:
     addresses=sorted({row[4][0] for row in socket.getaddrinfo(host,443,socket.AF_INET,socket.SOCK_STREAM)})
@@ -89,8 +89,9 @@ python3 - <<'PY'
 import base64,json,os,pathlib,re,socket,struct,subprocess,sys
 sys.path.insert(0,'tools')
 from probe import management_request,question
+from render import approved_rules
 p=pathlib.Path('.local'); s=json.loads((p/'settings.json').read_text()); password=(p/'admin-password').read_text()
-rules=json.loads(pathlib.Path('rules/pilot.json').read_text())
+rules=approved_rules(json.loads(pathlib.Path('rules/pilot.json').read_text()))
 status,body=management_request('http://'+os.environ['LAB_DNS_IP']+':3000','/control/filtering/status',s['admin_username'],password)
 assert status==200
 effective=json.loads(body)['user_rules']
