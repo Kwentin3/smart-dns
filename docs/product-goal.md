@@ -161,6 +161,9 @@ domains и глобальные исключения с причиной. Отк
 `tools/source_proposals.py` получает raw diff двух выбранных community-файлов и
 лицензию на immutable SHA. Он не изменяет каталог и не применяет правила.
 Live fetch исходного pin прошёл, изменений источника на тот момент не было.
+Дополнительно real historical comparison двух immutable upstream snapshots
+выдал diff OpenAI (15 строк) и Anthropic (23 строки), лицензия не менялась.
+Это демонстрация предложений; принятый pin и каталог не изменялись.
 
 Native AGH DoT на disposable CA: шесть проверок PASS, включая REFUSED для
 неизвестного/пустого ID, отзыв телефона и сохранение ACL/admin/router DoH при
