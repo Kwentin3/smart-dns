@@ -1,8 +1,9 @@
-"""Bounded service-only apply/readback/restore for an existing disposable lab.
+"""Bounded service-only apply/readback/restore for an explicitly selected target.
 
-No installation, production deployment, daemon, credential database or ACL
-mutation. Native AGH owns effective rules; renderer owns candidate representation.
-Stop-first also interrupts optional DoT carried by this lab relay. Forward work
+No installation, daemon, credential database or ACL mutation. Production mode
+operates only on a separately authorized existing Smart DNS project; it never
+deploys or recreates its shared edge. Native AGH owns effective rules.
+Stop-first also interrupts optional DoT carried by the relay. Forward work
 is bounded to 120 seconds, with a separate 60-second restore budget.
 """
 import argparse
@@ -24,7 +25,7 @@ import urllib.request
 import base64
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from tools.render import approved_rules, compile_config
+from tools.render import approved_rules, compile_config, compile_production
 
 
 class PolicyError(Exception):
@@ -49,7 +50,7 @@ def require(condition, message):
         raise PolicyError(message)
 
 
-def validate_candidate(accepted, candidate, settings, catalog, origins=None):
+def validate_candidate(accepted, candidate, settings, catalog, origins=None, *, production=False):
     """Pure validation using the existing renderer, never a second HA grammar.
 
     Bootstrap hashes compare intended inputs, not all live native admin settings.
@@ -59,19 +60,23 @@ def validate_candidate(accepted, candidate, settings, catalog, origins=None):
     old_manifest, new_manifest = (read_json(path / "snapshot.json") for path in (accepted, candidate))
     require(old_manifest["agh_bootstrap_sha256"] == new_manifest["agh_bootstrap_sha256"], "bootstrap infrastructure change rejected")
     try:
-        expected = compile_config(approved_rules(catalog), settings, origins)
+        compiler = compile_production if production else compile_config
+        expected = compiler(approved_rules(catalog), settings, origins)
     except Exception:
         raise PolicyError("candidate renderer inputs rejected") from None
     for name, value in expected.items():
-        if name == "compose.lab.json":
+        if name == ("compose.production.json" if production else "compose.lab.json"):
             continue
         actual = (candidate / name).read_text(encoding="utf-8")
         require((actual == value) if isinstance(value, str) else (json.loads(actual) == value), "candidate differs from native renderer output")
     bootstrap = read_json(candidate / "agh-conf/AdGuardHome.yaml")
     require(bootstrap.pop("user_rules") == new_manifest["service_rules"] and
             digest(bootstrap) == new_manifest["agh_bootstrap_sha256"], "candidate bootstrap/rules manifest mismatch")
-    old_compose, new_compose = (read_json(path / "compose.lab.json") for path in (accepted, candidate))
-    require(new_compose["services"]["relay"] == expected["compose.lab.json"]["services"]["relay"], "candidate relay differs from renderer")
+    compose_name = "compose.production.json" if production else "compose.lab.json"
+    old_compose, new_compose = (read_json(path / compose_name) for path in (accepted, candidate))
+    require(new_compose["services"]["relay"] == expected[compose_name]["services"]["relay"], "candidate relay differs from renderer")
+    if production:
+        require(new_compose == expected[compose_name], "production compose differs from renderer")
     require("@sha256:" in new_compose["services"]["relay"]["image"], "immutable relay image required")
     old_infra, new_infra = json.loads(json.dumps(old_compose)), json.loads(json.dumps(new_compose))
     old_infra["services"]["relay"].pop("labels")
@@ -83,7 +88,9 @@ def validate_candidate(accepted, candidate, settings, catalog, origins=None):
 def main():
     import fcntl  # Native Linux operation only; pure artifact checks work on Windows.
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--lab-only", action="store_true", required=True)
+    target = parser.add_mutually_exclusive_group(required=True)
+    target.add_argument("--lab-only", action="store_true")
+    target.add_argument("--production", action="store_true", help="Operate only on the separately authorized existing pilot")
     parser.add_argument("--accepted", type=Path, required=True)
     parser.add_argument("--candidate", type=Path, required=True)
     parser.add_argument("--settings", type=Path, required=True)
@@ -95,7 +102,9 @@ def main():
     parser.add_argument("--admin-password-file", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args()
-    require(bool(re.fullmatch(r"smart-dns-[a-z0-9][a-z0-9-]{0,48}", args.project)), "lab project name required")
+    project_pattern = r"smart-dns(?:-[a-z0-9][a-z0-9-]{0,48})?" if args.production else r"smart-dns-[a-z0-9][a-z0-9-]{0,48}"
+    require(bool(re.fullmatch(project_pattern, args.project)), "Smart DNS project name required")
+    compose_name = "compose.production.json" if args.production else "compose.lab.json"
     require(".local" in args.out.resolve().parts, "receipt must stay under a private .local directory")
     url = urllib.parse.urlsplit(args.management_base)
     try:
@@ -106,7 +115,7 @@ def main():
         local, port = False, None
     require(url.scheme == "http" and local and not url.username and not url.password and
             not url.query and not url.fragment and url.path in ("", "/") and
-            (port is None or 0 < port < 65536), "management must be a literal private/loopback HTTP fixture")
+            (port is None or 0 < port < 65536), "management must be a literal private/loopback HTTP endpoint")
     accepted, candidate = args.accepted.resolve(strict=True), args.candidate.resolve(strict=True)
     require(accepted != candidate, "accepted and candidate directories must differ")
     # One operator/project lock even when invoked from a different directory.
@@ -117,7 +126,7 @@ def main():
     try:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except BlockingIOError:
-        raise PolicyError("another operation owns this lab project") from None
+        raise PolicyError("another operation owns this Smart DNS project") from None
     args.out.parent.mkdir(parents=True, exist_ok=True)
     output = open(args.out, "x", encoding="utf-8")
     os.chmod(args.out, 0o600)
@@ -177,9 +186,10 @@ def main():
         status, _ = api("/control/filtering/set_rules", {"rules": values})
         require(status == 200 and rules() == values, "native rules write/readback failed")
 
-    def containers():
-        identifiers = docker("ps", "-aq", "--filter", "label=com.docker.compose.project=" + args.project).stdout.split()
-        require(bool(identifiers), "existing disposable lab project required")
+    def containers(all_host=False):
+        selection = () if all_host else ("--filter", "label=com.docker.compose.project=" + args.project)
+        identifiers = docker("ps", "-aq", *selection).stdout.split()
+        require(bool(identifiers), "existing Smart DNS project required")
         return json.loads(docker("inspect", *identifiers).stdout)
 
     def relay():
@@ -188,11 +198,17 @@ def main():
         return found[0]
 
     def protected():
-        return sorted((item["Id"], item["State"]["StartedAt"]) for item in containers()
-                      if item["Config"]["Labels"].get("com.docker.compose.service") != "relay")
+        result = []
+        for item in containers(all_host=args.production):
+            labels = item["Config"].get("Labels") or {}
+            owned_relay = labels.get("com.docker.compose.project") == args.project and labels.get("com.docker.compose.service") == "relay"
+            owned_check = labels.get("smart-dns.policy-check") == check_token
+            if not owned_relay and not owned_check:
+                result.append((item["Id"], item["State"]["StartedAt"]))
+        return sorted(result)
 
     def compose(directory, *command):
-        return docker("compose", "-p", args.project, "-f", str(directory / "compose.lab.json"), *command)
+        return docker("compose", "-p", args.project, "-f", str(directory / compose_name), *command)
 
     def verify_relay(directory, configuration, wait=False):
         while True:
@@ -235,7 +251,7 @@ def main():
     try:
         old_manifest, new_manifest, old_compose, new_compose = validate_candidate(
             accepted, candidate, read_json(args.settings), read_json(args.rules),
-            read_json(args.origins) if args.origins else None)
+            read_json(args.origins) if args.origins else None, production=args.production)
         old_rules, new_rules = old_manifest["service_rules"], new_manifest["service_rules"]
         dns = [item for item in containers() if item["Config"]["Labels"].get("com.docker.compose.service") == "dns"]
         require(len(dns) == 1, "exactly one owned DNS container required")
@@ -243,11 +259,11 @@ def main():
         direct = str(address) in {n["IPAddress"] for n in dns[0]["NetworkSettings"]["Networks"].values()} and str(port or 80) == native_port
         published = dns[0]["NetworkSettings"]["Ports"].get(native_port + "/tcp") or []
         forwarded = address.is_loopback and any(p["HostIp"] == "127.0.0.1" and p["HostPort"] == str(port or 80) for p in published)
-        require(direct or forwarded, "management endpoint is not owned by this lab DNS container")
+        require(direct or forwarded, "management endpoint is not owned by this Smart DNS container")
         require(rules() == old_rules, "actual native rules drift from accepted manifest")
         original_admission = admission()
         original_protected = protected()
-        require(len(original_protected) >= 2, "existing DNS and edge services required")
+        require(len(original_protected) >= (1 if args.production else 2), "protected existing services required")
         verify_relay(accepted, old_compose)
         mounts = []
         for volume in new_compose["services"]["relay"]["volumes"]:

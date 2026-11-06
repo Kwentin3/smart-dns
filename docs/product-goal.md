@@ -215,5 +215,24 @@ connection strings имеют статус NOT_DEPLOYED. До выдачи ра�
 До полного product DONE остаются допуск и приёмка private deployment и
 реальная device/service приёмка. Текущий
 bootstrap render нельзя использовать как обновление работающего AGH. Следующий
-шаг — отдельное согласование конкретного пилотного внедрения, начиная с server
-DNS/certificate; затем реальный пользовательский сценарий. Issue #3 не даёт production-допуск.
+Допуск получен в чате 2026-11-06: «даю апрув. аккуратнее с траефиком ;)» на
+подготовленный двухконтейнерный пакет, DNS/certificate и согласованный shared-edge
+override. Новый допуск имеет приоритет над исходным ограничением issue #3.
+Следующий шаг — DNS/certificate и сохранение точного rollback до изменения edge;
+далее canary/runtime проверки и реальный пользовательский сценарий.
+
+### Разрешённый rollout: начат, ingress ещё не изменён
+
+Точная текущая версия/health общего Traefik подтверждены. Private backup исходных
+Compose/env/inspect и container ID/StartedAt сохранён на сервере в каталоге модуля.
+Пакет размещён отдельно, два pinned image загружены; сервисы ещё не запущены.
+`compile_production` теперь единственный production adapter: output совпал с ранее
+согласованным пакетом; native render на системном Python 3.9 дал те же артефакты.
+58 unit checks PASS. Production service operation сохраняет identity остальных
+контейнеров хоста и не управляет shared edge.
+
+Владелец добавил A/TXT для DNS-01. Первая попытка выпуска остановилась на secondary
+validation NXDOMAIN. Прямые authoritative ответы и публичные резолверы расходились;
+запущено ограниченное read-only наблюдение. Причина расхождения окончательно не
+установлена; повторный ACME submit до стабилизации не выполняется. Рабочий Traefik
+не пересоздавался. До cert readiness новый DNS не публикуется как готовый.

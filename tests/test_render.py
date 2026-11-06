@@ -184,7 +184,7 @@ class RenderContractTests(unittest.TestCase):
 
     def test_write_failure_leaves_no_candidate_or_staging_and_preserves_accepted(self):
         artifacts = self.render()
-        real_write = Path.write_text
+        real_open = Path.open
         writes = []
 
         def fail_second_write(path, *args, **kwargs):
@@ -192,7 +192,7 @@ class RenderContractTests(unittest.TestCase):
             if len(writes) == 2:
                 self.assertTrue(writes[0].is_file())
                 raise OSError("simulated storage failure")
-            return real_write(path, *args, **kwargs)
+            return real_open(path, *args, **kwargs)
 
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
@@ -200,7 +200,7 @@ class RenderContractTests(unittest.TestCase):
             write_new(artifacts, accepted)
             before = {path.relative_to(accepted): path.read_bytes() for path in accepted.rglob("*") if path.is_file()}
             candidate = root / "candidate"
-            with patch.object(Path, "write_text", fail_second_write):
+            with patch.object(Path, "open", fail_second_write):
                 with self.assertRaisesRegex(OSError, "simulated storage failure"):
                     write_new(artifacts, candidate)
             self.assertEqual(len(writes), 2)

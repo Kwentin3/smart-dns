@@ -247,6 +247,32 @@ def compile_config(rules, settings, origins=None):
     return artifacts
 
 
+def compile_production(rules, settings, origins=None):
+    """Adapt native policy artifacts to the separately approved two-service pilot.
+
+    The existing edge and its logging/network configuration stay operator-owned;
+    this representation never creates, mounts the daemon socket into, or runs it.
+    """
+    if settings.get("dot") is None:
+        raise ValueError("production pilot requires native DoT certificate settings")
+    artifacts = compile_config(rules, settings, origins)
+    compose = artifacts.pop("compose.lab.json")
+    compose["services"] = {name: service for name, service in compose["services"].items() if name in ("dns", "relay")}
+    compose["networks"] = {"dns": {"name": "smart-dns_dns"}, "edge": {"external": True, "name": "edge"}}
+    dns, relay = compose["services"]["dns"], compose["services"]["relay"]
+    dns.update(user="65532:65532", ports=["127.0.0.1:13000:3000"],
+               tmpfs=["/opt/adguardhome/work:uid=65532,gid=65532,mode=0700"])
+    relay.update(networks=["edge", "dns"], ports=["0.0.0.0:853:8853"])
+    for service in (dns, relay):
+        service["restart"] = "unless-stopped"
+        service["labels"].pop("smart-dns.lab")
+    dns["labels"].update({"traefik.docker.network": "smart-dns_dns",
+                           "traefik.http.routers.sd-doh.tls.certresolver": "le"})
+    relay["labels"]["traefik.docker.network"] = "edge"
+    artifacts["compose.production.json"] = compose
+    return artifacts
+
+
 def write_new(artifacts, out):
     """Publish only a complete new directory; never overwrite an accepted set."""
     if out.exists():
@@ -257,7 +283,8 @@ def write_new(artifacts, out):
         for name, data in artifacts.items():
             path = staging / name
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(data if isinstance(data, str) else json.dumps(data, indent=2) + "\n", encoding="utf-8", newline="\n")
+            with path.open("w", encoding="utf-8", newline="\n") as stream:
+                stream.write(data if isinstance(data, str) else json.dumps(data, indent=2) + "\n")
             path.chmod(0o600 if name == "agh-conf/AdGuardHome.yaml" else 0o644)
         if out.exists():
             raise FileExistsError("output appeared during render; refusing overwrite")
@@ -270,10 +297,12 @@ def main():
     parser.add_argument("--settings", type=Path, required=True)
     parser.add_argument("--origins", type=Path, help="Fixed-mode origin snapshot; omit when settings.origin_dns is configured")
     parser.add_argument("--out", type=Path, default=ROOT / "generated")
+    parser.add_argument("--production", action="store_true", help="Prepare the approved two-service representation; never deploy")
     args = parser.parse_args()
     catalog, settings = (json.loads(p.read_text(encoding="utf-8")) for p in (args.rules, args.settings))
     origins = json.loads(args.origins.read_text(encoding="utf-8")) if args.origins is not None else None
-    artifacts = compile_config(approved_rules(catalog), settings, origins)
+    compiler = compile_production if args.production else compile_config
+    artifacts = compiler(approved_rules(catalog), settings, origins)
     write_new(artifacts, args.out)
     print("Rendered", len(artifacts), "artifacts; no services started")
 
