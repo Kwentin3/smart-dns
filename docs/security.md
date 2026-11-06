@@ -33,6 +33,34 @@ and matching work tmpfs. Only its required NET_BIND_SERVICE is restored after
 capability drop. Docker host and read-only socket mount remain privileged trust
 boundaries: `:ro` does not make daemon API access unprivileged.
 
+## Operator administration, next-stage candidate
+
+The smallest proposed operator path is existing approved SSH local forwarding to
+the current AGH container's internal HTTP port, followed by native AGH login.
+No public management route, host-port publication or new admin service is needed.
+Status: **NOT_TESTED on production; not provisioned by this PR**.
+
+After separate authorization, verify the current container identity/address,
+host key, SSH forwarding policy and host-to-container reachability. Example with
+placeholders only, in a foreground terminal:
+
+```sh
+ssh -N -o StrictHostKeyChecking=yes -o ExitOnForwardFailure=yes -L 127.0.0.1:13000:<AGH_IP>:3000 <SSH_ALIAS>
+```
+
+Open `http://127.0.0.1:13000` locally and use the real privately supplied AGH admin
+credentials, not the lab fixture. The network leg is inside SSH; the local HTTP
+listener is loopback-only and not a boundary against other users of that operator
+machine. Re-read the container address after recreation. Check login/API behavior:
+`ExitOnForwardFailure` alone does not establish the ultimate destination works.
+Close the foreground SSH session and confirm its local listener is gone. Do not
+change sshd, Docker or Traefik policy implicitly if forwarding is unavailable.
+Sources: [OpenSSH local forwarding](https://man.openbsd.org/ssh#L),
+[forward-failure semantics](https://man.openbsd.org/ssh_config#ExitOnForwardFailure).
+
+The [separate release gate](refactor.md#отдельный-release-gate) defines the actual
+production/device/product observations still needed.
+
 ## Limits and secret handling
 
 Native middleware order is canonical Host overwrite → rateLimit 20/s burst 40 →
