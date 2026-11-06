@@ -232,10 +232,18 @@ def compile_config(rules, settings, origins=None):
         services["relay"]["networks"] = ["default", "dns"]
         services["relay"]["ports"].append("127.0.0.1:1853:8853")
     artifacts = {"agh-conf/AdGuardHome.yaml": agh, "haproxy.cfg": "\n".join(hap) + "\n", "compose.lab.json": {"services": services, "networks": {"default": {}, "dns": {}}}, "snapshot.json": {"status": "candidate-not-applied", "sha256": fingerprint, "domains": domains, "desired_services": rules.get("service_states", []), "excluded_domains": rules.get("excluded_domains", {}), "origins": origins, "images": IMAGES}}
+    # AGH owns and rewrites its live YAML. Keep only this derived immutable
+    # bootstrap identity and service projection outside that mutable directory.
+    infrastructure = {key: value for key, value in agh.items() if key != "user_rules"}
+    artifacts["snapshot.json"].update(service_rules=user_rules,
+        agh_bootstrap_sha256=hashlib.sha256(json.dumps(infrastructure, sort_keys=True).encode()).hexdigest())
     if dynamic_origin:
         artifacts["denied-v4.txt"] = "\n".join(dict.fromkeys([*DENIED_ORIGIN_V4, *(address + "/32" for address in sorted(forbidden_ips))])) + "\n"
         services["relay"]["volumes"].append("./denied-v4.txt:/usr/local/etc/haproxy/denied-v4.txt:ro")
         artifacts["snapshot.json"].update(origin_mode="dynamic-ipv4", origin_dns=origin_dns)
+    artifacts["snapshot.json"]["relay_files_sha256"] = {
+        name: hashlib.sha256(artifacts[name].encode()).hexdigest()
+        for name in ("haproxy.cfg", "denied-v4.txt") if name in artifacts}
     return artifacts
 
 
@@ -249,7 +257,7 @@ def write_new(artifacts, out):
         for name, data in artifacts.items():
             path = staging / name
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(data if isinstance(data, str) else json.dumps(data, indent=2) + "\n", encoding="utf-8")
+            path.write_text(data if isinstance(data, str) else json.dumps(data, indent=2) + "\n", encoding="utf-8", newline="\n")
             path.chmod(0o600 if name == "agh-conf/AdGuardHome.yaml" else 0o644)
         if out.exists():
             raise FileExistsError("output appeared during render; refusing overwrite")

@@ -166,7 +166,7 @@ Native AGH DoT на disposable CA: шесть проверок PASS, включ�
 неизвестного/пустого ID, отзыв телефона и сохранение ACL/admin/router DoH при
 замене custom rules и их откате. Тестовый CA не установлен в систему. Optional
 `settings.dot` генерирует native TLS и отдельный ограниченный localhost lab port;
-этот Compose-путь целиком ещё не проверен. Обычный DNS при DoT отключён.
+общий Compose-путь теперь проверен на Linux. Обычный DNS при DoT отключён.
 
 Отдельный native HAProxy experiment: 15 проверок PASS — verified origin TLS,
 CNAME/обновление public A, private/metadata/self denial, NXDOMAIN/AAAA-only/timeout
@@ -174,12 +174,43 @@ fail-closed. Проверялся именно выбранный адрес и 
 калиброванным private trap. Контейнеры/сеть удалены, прежние container IDs совпали.
 Это доказательство механизма. Renderer теперь поддерживает optional `origin_dns`
 с отдельным deny artifact и immutable policy fingerprint; его native syntax
-проверена на pinned HAProxy. Default fixed-origin baseline сохранён. Полный
-интегрированный runtime dynamic+DoT пока не принят.
+проверена на pinned HAProxy. Default fixed-origin baseline сохранён.
 
-До полного product DONE остаются приёмка интегрированного runtime, один bounded
-apply/readback/rollback для всех трёх consumers с сохранением живого AGH state,
-конкретный private deployment package и реальная device/service приёмка. Текущий
+Общий native runtime dynamic+DoT: 10 проверок PASS. DoH проверяет тестовый CA
+и hostname; DoT проходит через отдельный HA frontend; оба origin проверены
+с публичным CA через relay и edge. Этот CA не установлен в trust store ОС.
+
+`tools/service_policy.py` — ограниченная lab-only операция, не daemon и не новый
+реестр. Она перепроверяет candidate существующим renderer, проверяет actual AGH
+rules/ACL/profile и mounted relay policy/image/labels, затем останавливает только
+relay, заменяет custom rules native API и запускает только relay новой генерации.
+AGH/edge/соседние сервисы не перезапускаются. Client admission и users не пишутся.
+Native AGH может переписать собственный YAML; immutable snapshot содержит только
+производные service rules и fingerprint начального bootstrap. Это не второй
+актуальный реестр клиентов и не аудит всех текущих admin settings.
+
+Пять operation checks PASS: отказ реальной Docker-команды после записи native
+rules → восстановление прежних правил/relay; disable одного сервиса; all-off;
+restore; возврат телефона только отдельным native ACL действием. При каждом
+service update/rollback отозванный телефон оставался запрещённым, обычные DNS
+ответы и affected TLS path проверялись по сети, три protected контейнера сохранили
+ID/StartedAt. Cleanup — PASS, 15 прежних container IDs совпали; временные
+контейнеры/сети/remote каталог/operator lock удалены. Независимое review среза — PASS.
+[Evidence и ограничения](reports/2026-11-06/product-native-acceptance.md).
+
+Private deployment candidate сформирован локально и в Git не публикуется:
+два новых ограниченных контейнера AGH/HAProxy, отдельная DNS-сеть, public TCP/853,
+localhost admin port и использование текущего Docker provider общего edge.
+Shared edge override добавляет DNS-сеть и фильтрацию access-log полей, сохраняя
+его остальные команды и сети. Это требует краткого пересоздания общего edge;
+изменение журналов затрагивает его общую observability и требует явного допуска.
+Оба Compose-документа проверены native `compose config -q` на фактической текущей
+конфигурации без применения. Целевой сертификат/DNS challenge ещё не подготовлены;
+connection strings имеют статус NOT_DEPLOYED. До выдачи рабочего подключения
+нужны отдельно разрешённые certificate/DNS/logging/rollout и canary/runtime checks.
+
+До полного product DONE остаются допуск и приёмка private deployment и
+реальная device/service приёмка. Текущий
 bootstrap render нельзя использовать как обновление работающего AGH. Следующий
-шаг — интеграция проверенных native механизмов и rehearsal итогового пакета;
-для внедрения остаётся обеспечить серверный DNS/certificate. Issue #3 не даёт production-допуск.
+шаг — отдельное согласование конкретного пилотного внедрения, начиная с server
+DNS/certificate; затем реальный пользовательский сценарий. Issue #3 не даёт production-допуск.

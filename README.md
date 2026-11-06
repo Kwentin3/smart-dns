@@ -61,6 +61,13 @@ Scheduled/manual workflow только сохраняет этот артефа�
 default branch. Новые правила включаются после review. Ошибка fetch сохраняет
 предыдущий proposal и accepted каталог. Ни deploy, ни автоматический импорт не выполняются.
 
+Для уже работающего disposable lab `tools/service_policy.py --lab-only` выполняет
+service-only apply/readback/rollback через native API и Compose. Требуются старый
+accepted bundle, новый render candidate и его исходные settings/catalog. Он не
+записывает полную конфигурацию AGH и не возвращает отозванных клиентов из bootstrap.
+На время операции relay, включая DoT, останавливается. Это проверенный lab path;
+production deployment им не разрешается. [Приёмка](docs/reports/2026-11-06/product-native-acceptance.md).
+
 Нужны Python 3.11+ (stdlib), Docker Engine/Compose v2 на разрешённом Linux
 полигоне. Docker и системный DNS скриптом не устанавливаются/не изменяются.
 
