@@ -1,0 +1,493 @@
+{
+  "input_archive_sha256": "dd9e56f639779ca642420b8803c361323c9c08d30e54c356090f5d2ead0ace35",
+  "source_sha256": {
+    "tools/render.py": "f091192eca599983e0215428009c694f9f15e1933c3257881437d7de2279423d",
+    "tools/probe.py": "80195438fbeb1d7949ee0ee1261c75150eb27bcb2e98b2762aa519511c379965",
+    "tools/probe_review.py": "c07e2862c277526297385e0198d41272940ae3f4d1de59fb7370bb4cead666cf",
+    "tools/probe_limits.py": "5dcb295c195625df876732030994f0a4233cdaf7670f604cd2daa64ae3cb2526",
+    "tools/run_lab.sh": "cdc22d59bb908509f368d6ef4c350fcdb73ad99db2ff78f95f265a925b491c0f",
+    "tools/test_native_agh.py": "6c89077ab94ada5c414580cf21f48d6ebb8db053fceede7ac1d5f850ed00239d",
+    "tests/test_render.py": "c9b32a9084e96416715decd897537da97b8088c181af8e5f3f0a5e72acb1ff32",
+    "config/images.lock.json": "971d521dc1a89548ec6c081e5e1b9fd3b2be78b5a81fa4b2cc38e6266dd2970e",
+    "config/settings.example.json": "a9d3474b39bac9d123e8b7d9394466d1850039c644c5266232b7fe55040fa7fd",
+    "rules/pilot.json": "c20f64628f29d661107e970a30cb5f87b67f3a81c15a1a166d5d28b197bbcf36"
+  },
+  "native_windows_probes": [
+    {
+      "check": "anonymous",
+      "status": "PASS",
+      "http": 200,
+      "dns_rcode": "REFUSED",
+      "answer_count": 0
+    },
+    {
+      "check": "unknown-client",
+      "status": "PASS",
+      "http": 200,
+      "dns_rcode": "REFUSED",
+      "answer_count": 0
+    },
+    {
+      "check": "rewrite-A-and-empty-AAAA-SVCB-HTTPS",
+      "domain": "chatgpt.com",
+      "status": "PASS"
+    },
+    {
+      "check": "rewrite-A-and-empty-AAAA-SVCB-HTTPS",
+      "domain": "claude.ai",
+      "status": "PASS"
+    },
+    {
+      "check": "authorized-GET-without-admin-credentials",
+      "status": "PASS"
+    },
+    {
+      "check": "direct-answer-verified",
+      "domain": "ordinary.example.net",
+      "status": "PASS"
+    },
+    {
+      "check": "direct-answer-verified",
+      "domain": "sub.chatgpt.com",
+      "status": "PASS"
+    },
+    {
+      "check": "management-anonymous-wrong-password-401-authenticated-200",
+      "status": "PASS"
+    },
+    {
+      "check": "anonymous-ACL-mutation-401",
+      "status": "PASS"
+    },
+    {
+      "check": "native-ID-revocation-GET-POST-and-restoration",
+      "status": "PASS"
+    },
+    {
+      "check": "plain-DNS-UDP-unauthorized-denied",
+      "status": "PASS"
+    },
+    {
+      "check": "plain-DNS-TCP-unauthorized-denied",
+      "status": "PASS"
+    }
+  ],
+  "linux_probes": [
+    {
+      "check": "anonymous",
+      "status": "PASS",
+      "http": 200,
+      "dns_rcode": "REFUSED",
+      "answer_count": 0
+    },
+    {
+      "check": "unknown-client",
+      "status": "PASS",
+      "http": 200,
+      "dns_rcode": "REFUSED",
+      "answer_count": 0
+    },
+    {
+      "check": "rewrite-A-and-empty-AAAA-SVCB-HTTPS",
+      "domain": "chatgpt.com",
+      "status": "PASS"
+    },
+    {
+      "check": "rewrite-A-and-empty-AAAA-SVCB-HTTPS",
+      "domain": "claude.ai",
+      "status": "PASS"
+    },
+    {
+      "check": "authorized-GET-without-admin-credentials",
+      "status": "PASS"
+    },
+    {
+      "check": "direct-answer-verified",
+      "domain": "example.com",
+      "status": "PASS"
+    },
+    {
+      "check": "subdomain-not-rewritten",
+      "domain": "sub.chatgpt.com",
+      "status": "PASS"
+    },
+    {
+      "check": "origin-certificate",
+      "domain": "chatgpt.com",
+      "status": "PASS",
+      "tls": "TLSv1.3"
+    },
+    {
+      "check": "origin-certificate",
+      "domain": "claude.ai",
+      "status": "PASS",
+      "tls": "TLSv1.3"
+    },
+    {
+      "check": "relay-reject-not-approved.example.net",
+      "status": "PASS"
+    },
+    {
+      "check": "relay-reject-None",
+      "status": "PASS"
+    },
+    {
+      "check": "relay-reject-127.0.0.1",
+      "status": "PASS"
+    },
+    {
+      "check": "relay-reject-sub.chatgpt.com",
+      "status": "PASS"
+    },
+    {
+      "check": "existing-HTTP-router-coexistence",
+      "status": "PASS"
+    },
+    {
+      "check": "management-anonymous-wrong-password-401-authenticated-200",
+      "status": "PASS"
+    },
+    {
+      "check": "anonymous-ACL-mutation-401",
+      "status": "PASS"
+    },
+    {
+      "check": "native-ID-revocation-GET-POST-and-restoration",
+      "status": "PASS"
+    }
+  ],
+  "URL_and_SNI_probes": [
+    {
+      "check": "mixed-SNI-edge",
+      "domain": "ChAtGpT.CoM",
+      "status": "PASS",
+      "tls": "TLSv1.3"
+    },
+    {
+      "check": "mixed-SNI-edge",
+      "domain": "ClAuDe.Ai",
+      "status": "PASS",
+      "tls": "TLSv1.3"
+    },
+    {
+      "check": "mixed-SNI-relay",
+      "domain": "ChAtGpT.CoM",
+      "status": "PASS",
+      "tls": "TLSv1.3"
+    },
+    {
+      "check": "mixed-SNI-relay",
+      "domain": "ClAuDe.Ai",
+      "status": "PASS",
+      "tls": "TLSv1.3"
+    },
+    {
+      "check": "mixed-SNI-relay",
+      "status": "PASS",
+      "domain": "SuB.ChAtGpT.CoM"
+    },
+    {
+      "check": "mixed-SNI-relay",
+      "status": "PASS",
+      "domain": "ChAtGpT.CoM.evil.invalid"
+    },
+    {
+      "check": "DoH-path",
+      "case": "authorized",
+      "status": "PASS",
+      "http": 200,
+      "expected_dns_route": true,
+      "route_boundary": "PASS",
+      "route_evidence": "wire-DNS-and-router-log-suppressed",
+      "dns_router_log_present": false
+    },
+    {
+      "check": "DoH-path",
+      "case": "anonymous",
+      "status": "PASS",
+      "http": 200,
+      "expected_dns_route": true,
+      "route_boundary": "PASS",
+      "route_evidence": "wire-DNS-and-router-log-suppressed",
+      "dns_router_log_present": false
+    },
+    {
+      "check": "DoH-path",
+      "case": "unknown-client",
+      "status": "PASS",
+      "http": 200,
+      "expected_dns_route": true,
+      "route_boundary": "PASS",
+      "route_evidence": "wire-DNS-and-router-log-suppressed",
+      "dns_router_log_present": false
+    },
+    {
+      "check": "DoH-path",
+      "case": "prefix-lookalike",
+      "status": "PASS",
+      "http": 404,
+      "expected_dns_route": false,
+      "route_boundary": "PASS",
+      "route_evidence": "unmatched-router-access-log",
+      "dns_router_log_present": false
+    },
+    {
+      "check": "DoH-path",
+      "case": "suffix-lookalike",
+      "status": "PASS",
+      "http": 404,
+      "expected_dns_route": false,
+      "route_boundary": "PASS",
+      "route_evidence": "unmatched-router-access-log",
+      "dns_router_log_present": false
+    },
+    {
+      "check": "DoH-path",
+      "case": "management-under-prefix",
+      "status": "PASS",
+      "http": 404,
+      "expected_dns_route": false,
+      "route_boundary": "PASS",
+      "route_evidence": "unmatched-router-access-log",
+      "dns_router_log_present": false
+    },
+    {
+      "check": "DoH-path",
+      "case": "management",
+      "status": "PASS",
+      "http": 404,
+      "expected_dns_route": false,
+      "route_boundary": "PASS",
+      "route_evidence": "unmatched-router-access-log",
+      "dns_router_log_present": false
+    },
+    {
+      "check": "DoH-path",
+      "case": "setup",
+      "status": "PASS",
+      "http": 404,
+      "expected_dns_route": false,
+      "route_boundary": "PASS",
+      "route_evidence": "unmatched-router-access-log",
+      "dns_router_log_present": false
+    },
+    {
+      "check": "DoH-path",
+      "case": "root",
+      "status": "PASS",
+      "http": 404,
+      "expected_dns_route": false,
+      "route_boundary": "PASS",
+      "route_evidence": "unmatched-router-access-log",
+      "dns_router_log_present": false
+    },
+    {
+      "check": "DoH-path",
+      "case": "trailing-slash",
+      "status": "PASS",
+      "http": 404,
+      "expected_dns_route": false,
+      "route_boundary": "PASS",
+      "route_evidence": "unmatched-router-access-log",
+      "dns_router_log_present": false
+    },
+    {
+      "check": "DoH-path",
+      "case": "dot-traversal",
+      "status": "PASS",
+      "http": 404,
+      "expected_dns_route": false,
+      "route_boundary": "PASS",
+      "route_evidence": "unmatched-router-access-log",
+      "dns_router_log_present": false
+    },
+    {
+      "check": "DoH-path",
+      "case": "encoded-dot-traversal",
+      "status": "PASS",
+      "http": 404,
+      "expected_dns_route": false,
+      "route_boundary": "PASS",
+      "route_evidence": "unmatched-router-access-log",
+      "dns_router_log_present": false
+    },
+    {
+      "check": "DoH-path",
+      "case": "encoded-slash-traversal",
+      "status": "PASS",
+      "http": 404,
+      "expected_dns_route": false,
+      "route_boundary": "PASS",
+      "route_evidence": "unmatched-router-access-log",
+      "dns_router_log_present": false
+    },
+    {
+      "check": "DoH-path",
+      "case": "encoded-backslash",
+      "status": "PASS",
+      "http": 404,
+      "expected_dns_route": false,
+      "route_boundary": "PASS",
+      "route_evidence": "unmatched-router-access-log",
+      "dns_router_log_present": false
+    },
+    {
+      "check": "DoH-path",
+      "case": "double-encoded-traversal",
+      "status": "PASS",
+      "http": 404,
+      "expected_dns_route": false,
+      "route_boundary": "PASS",
+      "route_evidence": "unmatched-router-access-log",
+      "dns_router_log_present": false
+    }
+  ],
+  "native_limit_probes": [
+    {
+      "check": "native-inflight-eight-held-ninth-429-other-router-200",
+      "status": "PASS"
+    },
+    {
+      "check": "native-shared-rate-budget-host-variants-429-and-recovery",
+      "status": "PASS",
+      "accepted": 39,
+      "limited": 81,
+      "elapsed_seconds": 0.097
+    }
+  ],
+  "direct_peer_and_policy": {
+    "check": "effective-three-host-sets-and-direct-peer-admission",
+    "status": "PASS",
+    "effective_hosts": [
+      "chatgpt.com",
+      "claude.ai"
+    ],
+    "peer_management": "401",
+    "peer_anonymous_GET": "REFUSED",
+    "direct_plain_DNS": "no-useful-answer"
+  },
+  "rollback": {
+    "check": "failed-native-candidate-and-restoration",
+    "status": "PASS",
+    "rejected_exit_code": 1,
+    "edge_and_neighbor_identity_unchanged": true,
+    "restored_probe_count": 16
+  },
+  "rollback_probes": [
+    {
+      "check": "anonymous",
+      "status": "PASS",
+      "http": 200,
+      "dns_rcode": "REFUSED",
+      "answer_count": 0
+    },
+    {
+      "check": "unknown-client",
+      "status": "PASS",
+      "http": 200,
+      "dns_rcode": "REFUSED",
+      "answer_count": 0
+    },
+    {
+      "check": "rewrite-A-and-empty-AAAA-SVCB-HTTPS",
+      "domain": "chatgpt.com",
+      "status": "PASS"
+    },
+    {
+      "check": "rewrite-A-and-empty-AAAA-SVCB-HTTPS",
+      "domain": "claude.ai",
+      "status": "PASS"
+    },
+    {
+      "check": "authorized-GET-without-admin-credentials",
+      "status": "PASS"
+    },
+    {
+      "check": "direct-answer-verified",
+      "domain": "example.com",
+      "status": "PASS"
+    },
+    {
+      "check": "subdomain-not-rewritten",
+      "domain": "sub.chatgpt.com",
+      "status": "PASS"
+    },
+    {
+      "check": "origin-certificate",
+      "domain": "chatgpt.com",
+      "status": "PASS",
+      "tls": "TLSv1.3"
+    },
+    {
+      "check": "origin-certificate",
+      "domain": "claude.ai",
+      "status": "PASS",
+      "tls": "TLSv1.3"
+    },
+    {
+      "check": "relay-reject-not-approved.example.net",
+      "status": "PASS"
+    },
+    {
+      "check": "relay-reject-None",
+      "status": "PASS"
+    },
+    {
+      "check": "relay-reject-127.0.0.1",
+      "status": "PASS"
+    },
+    {
+      "check": "relay-reject-sub.chatgpt.com",
+      "status": "PASS"
+    },
+    {
+      "check": "existing-HTTP-router-coexistence",
+      "status": "PASS"
+    },
+    {
+      "check": "management-anonymous-wrong-password-401-authenticated-200",
+      "status": "PASS"
+    },
+    {
+      "check": "anonymous-ACL-mutation-401",
+      "status": "PASS"
+    }
+  ],
+  "running_images": [
+    {
+      "service": "dns",
+      "locked_ref": "adguard/adguardhome:v0.107.80@sha256:e2e1b48c832f7705be915873f95de0d5114de573736441d7f2923a8a6293027c",
+      "running_image_id": "sha256:24090a423f1f1d8ae8cd9551261ada5c653349fe4093798342704e3461d8ad4c",
+      "repo_digests": [
+        "adguard/adguardhome@sha256:e2e1b48c832f7705be915873f95de0d5114de573736441d7f2923a8a6293027c"
+      ]
+    },
+    {
+      "service": "edge",
+      "locked_ref": "traefik:v3.6.25@sha256:31267173a15b4944e797a76ffd9c419707c8d8b32fe5b610f80cd0cfa05f372d",
+      "running_image_id": "sha256:ee0b3aaa56c3f593da2c7d67ebbdbc600155bf6be2c3cece8f7870db29714a88",
+      "repo_digests": [
+        "traefik@sha256:31267173a15b4944e797a76ffd9c419707c8d8b32fe5b610f80cd0cfa05f372d"
+      ]
+    },
+    {
+      "service": "existing-site",
+      "locked_ref": "traefik/whoami:v1.11.0@sha256:200689790a0a0ea48ca45992e0450bc26ccab5307375b41c84dfc4f2475937ab",
+      "running_image_id": "sha256:6fee7566e4273ee6078f08e167e36434b35f72152232a5e6f1446288817dabe5",
+      "repo_digests": [
+        "traefik/whoami@sha256:200689790a0a0ea48ca45992e0450bc26ccab5307375b41c84dfc4f2475937ab"
+      ]
+    },
+    {
+      "service": "relay",
+      "locked_ref": "haproxy:3.2.26-alpine@sha256:96ec3c75a9264ba94e733eeacb44051ed6e7b79bb77a73c2c36f236b6423f1f0",
+      "running_image_id": "sha256:d392bc106c144248cfed41f18f14ff3668dc5d49b2d27da370375d7ed6be985d",
+      "repo_digests": [
+        "haproxy@sha256:96ec3c75a9264ba94e733eeacb44051ed6e7b79bb77a73c2c36f236b6423f1f0"
+      ]
+    }
+  ],
+  "clientid_absent_from_saved_compose_logs": true,
+  "existing_container_ids_unchanged": true,
+  "existing_container_count": 15
+}

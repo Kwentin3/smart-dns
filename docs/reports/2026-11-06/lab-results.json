@@ -1,0 +1,81 @@
+{
+  "input_archive_sha256": "78cb34e3be92319c580f72142a1f314e350b15ea21fe936b11c9e7cda40a31dd",
+  "source_sha256": {
+    "tools/render.py": "19f39d772a79d05f326a66d07bb77b643c8b77337ee9a2aa86e28a0b5c705676",
+    "tools/probe.py": "342e4523805c875ba89b79950986a3593374aeed718119f1436d76da91460d76",
+    "tools/run_lab.sh": "77690db09d7ddf8e153d702245550dbc0577e3e5ff7b96666d2f8149379cadcf",
+    "tools/test_native_agh.py": "a6e41e76a893b0b5db22ce7b8c9b45d4a3d1776b5c43eb6318aa5978fd7230bd",
+    "config/images.lock.json": "971d521dc1a89548ec6c081e5e1b9fd3b2be78b5a81fa4b2cc38e6266dd2970e",
+    "rules/pilot.json": "c20f64628f29d661107e970a30cb5f87b67f3a81c15a1a166d5d28b197bbcf36"
+  },
+  "existing_container_id_sets_equal": true,
+  "existing_container_count": 15,
+  "probes": [
+    {
+      "check": "anonymous",
+      "status": "PASS",
+      "http": 200,
+      "dns_rcode": "REFUSED",
+      "answer_count": 0
+    },
+    {
+      "check": "unknown-client",
+      "status": "PASS",
+      "http": 200,
+      "dns_rcode": "REFUSED",
+      "answer_count": 0
+    },
+    {
+      "check": "rewrite-A-and-empty-AAAA-SVCB-HTTPS",
+      "domain": "chatgpt.com",
+      "status": "PASS"
+    },
+    {
+      "check": "rewrite-A-and-empty-AAAA-SVCB-HTTPS",
+      "domain": "claude.ai",
+      "status": "PASS"
+    },
+    {
+      "check": "direct-unmodified",
+      "domain": "example.com",
+      "status": "PASS"
+    },
+    {
+      "check": "direct-unmodified",
+      "domain": "sub.chatgpt.com",
+      "status": "PASS"
+    },
+    {
+      "check": "origin-certificate",
+      "domain": "chatgpt.com",
+      "status": "PASS",
+      "tls": "TLSv1.3"
+    },
+    {
+      "check": "origin-certificate",
+      "domain": "claude.ai",
+      "status": "PASS",
+      "tls": "TLSv1.3"
+    },
+    {
+      "check": "relay-reject-not-approved.example.net",
+      "status": "PASS"
+    },
+    {
+      "check": "relay-reject-None",
+      "status": "PASS"
+    },
+    {
+      "check": "relay-reject-127.0.0.1",
+      "status": "PASS"
+    },
+    {
+      "check": "relay-reject-sub.chatgpt.com",
+      "status": "PASS"
+    },
+    {
+      "check": "existing-HTTP-router-coexistence",
+      "status": "PASS"
+    }
+  ]
+}

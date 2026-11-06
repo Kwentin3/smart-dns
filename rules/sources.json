@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "reviewed_on": "2026-11-06",
+  "policy": "proposal-only; never import or deploy upstream lists automatically",
+  "sources": [
+    {
+      "id": "no-russia-hosts",
+      "repository": "https://github.com/dartraiden/no-russia-hosts",
+      "commit": "188e386c28b0207381b053a6701b0862af9ea7c9",
+      "paths": ["hosts.txt"],
+      "reference": "https://github.com/dartraiden/no-russia-hosts/blob/188e386c28b0207381b053a6701b0862af9ea7c9/hosts.txt",
+      "license": null,
+      "license_note": "No license file in the pinned recursive tree and no explicit license grant in README.md; redistribution permission is unconfirmed.",
+      "format": "plain-domain-per-line-with-comments",
+      "upstream_semantics": "Author deliberately lists parent domains to cover subdomains; this does not authorize local suffix rules.",
+      "selected_upstream_entries": ["chatgpt.com", "openai.com", "oaistatic.com", "oaiusercontent.com", "claude.ai", "claude.com", "anthropic.com"],
+      "use": "manual-provenance-reference-only"
+    },
+    {
+      "id": "allow-domains-geoblock",
+      "repository": "https://github.com/itdoginfo/allow-domains",
+      "commit": "eb64def4353f8e1b9cc483858021979a3481c76e",
+      "paths": ["Categories/geoblock.lst"],
+      "reference": "https://github.com/itdoginfo/allow-domains/blob/eb64def4353f8e1b9cc483858021979a3481c76e/Categories/geoblock.lst",
+      "license": null,
+      "license_note": "No license file in the pinned recursive tree and no explicit license grant in README.md; redistribution permission is unconfirmed.",
+      "format": "plain-domain-per-line",
+      "selected_upstream_entries": ["chatgpt.com", "openai.com", "oaistatic.com", "oaiusercontent.com", "claude.ai", "claude.com", "anthropic.com"],
+      "use": "manual-provenance-reference-only"
+    },
+    {
+      "id": "allow-domains-google-ai",
+      "repository": "https://github.com/itdoginfo/allow-domains",
+      "commit": "eb64def4353f8e1b9cc483858021979a3481c76e",
+      "paths": ["Services/google_ai.lst"],
+      "reference": "https://github.com/itdoginfo/allow-domains/blob/eb64def4353f8e1b9cc483858021979a3481c76e/Services/google_ai.lst",
+      "license": null,
+      "license_note": "Same repository license gap as allow-domains-geoblock.",
+      "format": "plain-domain-per-line",
+      "selected_upstream_entries": [],
+      "use": "future-manual-review-only; outside ChatGPT/Claude pilot"
+    },
+    {
+      "id": "overseas-ai",
+      "repository": "https://github.com/viewer12/OverseasAI.list",
+      "commit": "f8d93d9f6cb6b0eb183773ad238171d511f25a6c",
+      "paths": ["rule/Clash/OverseasAI/OverseasAI.list"],
+      "reference": "https://github.com/viewer12/OverseasAI.list/blob/f8d93d9f6cb6b0eb183773ad238171d511f25a6c/rule/Clash/OverseasAI/OverseasAI.list",
+      "license": "GPL-2.0",
+      "license_reference": "https://github.com/viewer12/OverseasAI.list/blob/f8d93d9f6cb6b0eb183773ad238171d511f25a6c/LICENSE",
+      "license_note": "README declares GPL-2.0 and attribution to blackmatrix7/ios_rule_script; no determination of only versus or-later made here.",
+      "format": "mixed-clash-domain-suffix-keyword-cidr-asn",
+      "selected_upstream_entries": [],
+      "use": "optional-cross-check-only; disabled-for-import"
+    }
+  ]
+}
