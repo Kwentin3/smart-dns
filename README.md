@@ -1,13 +1,15 @@
 # Smart DNS
 
 Текущая продуктовая задача — [issue #3](https://github.com/Kwentin3/smart-dns/issues/3):
-[оценка разрывов и последовательность](docs/product-goal.md). Изолированный пилот
-ниже — техническая база; управляемый product и устройства ещё не приняты.
+[текущее состояние и обязательный остаток](docs/product-goal.md). Private pilot
+развёрнут с отдельным разрешением владельца; [техническая приёмка production](docs/reports/2026-11-06/production-pilot.md)
+завершена. Реальные устройства и функции приложения ещё не приняты.
 
 Изолированный пилот [issue #1](https://github.com/Kwentin3/smart-dns/issues/1):
 AdGuard Home → точные HostSNI rules Traefik → HAProxy → фиксированный public IPv4.
-Production, Hermes и общий Traefik не изменяются. Список содержит только
-`chatgpt.com` и `claude.ai`, без поддоменов. Вход, сообщения, CDN, файлы, повторные
+В этом историческом baseline production, Hermes и общий Traefik не изменялись.
+Текущие одобренные exact hosts задаёт только [сервисный каталог](rules/pilot.json).
+Вход, сообщения, CDN, файлы, повторные
 сессии и устройства целиком пока не приняты; Gemini отложен.
 [Текущий GOAL и решения](docs/refactor.md).
 
@@ -18,7 +20,7 @@ rules, Traefik labels и HAProxy ACL/backends. [Внешние реестры](r
 дают предложения, без автоматического импорта. Render не обращается в сеть и не
 запускает сервисы. Origins — reviewed numeric public IPv4:443; private/reserved,
 metadata, multicast, IPv6, собственный ingress и provider-service IP отвергаются.
-Runtime DNS/fallback нет.
+В fixed-origin режиме runtime DNS/fallback нет.
 
 Для candidate доступен optional `settings.origin_dns: ["9.9.9.9"]`: штатный
 HAProxy разрешает одобренный SNI и проверяет выбранный IPv4 перед соединением.
@@ -27,7 +29,8 @@ HAProxy разрешает одобренный SNI и проверяет выб
 
 AGH использует native ClientID-only `allowed_clients` и обязательную admin-учётную
 запись с bcrypt hash. Узкая DNS-сеть соединяет только AGH и lab Traefik. Plain DNS
-5353 остаётся внутренним и не публикуется. Public DoH route не ведёт к management;
+5353 в lab без DoT остаётся внутренним и не публикуется; при DoT plain DNS отключён.
+Public DoH route не ведёт к management;
 native login дополнительно защищает прямой доступ. AGH работает под UID/GID
 оператора с writable config directory и только необходимой NET_BIND_SERVICE.
 

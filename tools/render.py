@@ -69,6 +69,8 @@ def approved_rules(catalog):
         if service["enabled"]:
             active.update(domains)
         states.append({"id": service_id, "name": service["name"], "enabled": service["enabled"], "reason": service["reason"], "domains": domains, "discovery_source": service.get("source"), "source_path": service.get("source_path")})
+        if "references" in service:
+            states[-1]["references"] = service["references"]
     excluded = catalog["excluded_domains"]
     if not isinstance(excluded, dict) or not set(excluded) <= all_domains:
         raise ValueError("exclusions must reference catalog domains")
@@ -142,7 +144,10 @@ def compile_config(rules, settings, origins=None):
         "tls": {"enabled": False, "port_https": 0, "port_dns_over_tls": 0, "port_dns_over_quic": 0},
         "filters": [], "whitelist_filters": [], "user_rules": user_rules,
         "clients": {"runtime_sources": {"whois": False, "rdns": False, "arp": False, "dhcp": False, "hosts": False}},
-        "querylog": {"enabled": False}, "statistics": {"enabled": False}, "schema_version": 34}
+        "querylog": {"enabled": False}, "statistics": {"enabled": False},
+        # Native strict-SNI warnings otherwise persist the revocable hostname ID.
+        # The v0.107.80 legacy logger is separate: keep runtime canary acceptance.
+        "log": {"enabled": False}, "schema_version": 34}
     dot = settings.get("dot")
     if dot is not None:
         if hostname(dot["server_name"]) != doh_host:

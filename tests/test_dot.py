@@ -52,6 +52,7 @@ class NativeDotConfigTests(unittest.TestCase):
         self.assertEqual(after["tls"]["port_https"], 0)
         self.assertEqual(after["tls"]["port_dns_over_quic"], 0)
         self.assertFalse(after["dns"]["serve_plain_dns"])
+        self.assertFalse(after["log"]["enabled"])
         self.assertEqual(after["dns"]["allowed_clients"], before["dns"]["allowed_clients"])
         self.assertEqual(after["users"], before["users"])
 

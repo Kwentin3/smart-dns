@@ -221,18 +221,42 @@ override. Новый допуск имеет приоритет над исхо�
 Следующий шаг — DNS/certificate и сохранение точного rollback до изменения edge;
 далее canary/runtime проверки и реальный пользовательский сценарий.
 
-### Разрешённый rollout: начат, ingress ещё не изменён
+### Разрешённый rollout: техническая приёмка завершена
 
 Точная текущая версия/health общего Traefik подтверждены. Private backup исходных
 Compose/env/inspect и container ID/StartedAt сохранён на сервере в каталоге модуля.
-Пакет размещён отдельно, два pinned image загружены; сервисы ещё не запущены.
+Пакет размещён отдельно, два pinned image загружены; оба сервиса работают.
 `compile_production` теперь единственный production adapter: output совпал с ранее
 согласованным пакетом; native render на системном Python 3.9 дал те же артефакты.
 58 unit checks PASS. Production service operation сохраняет identity остальных
 контейнеров хоста и не управляет shared edge.
 
-Владелец добавил A/TXT для DNS-01. Первая попытка выпуска остановилась на secondary
-validation NXDOMAIN. Прямые authoritative ответы и публичные резолверы расходились;
-запущено ограниченное read-only наблюдение. Причина расхождения окончательно не
-установлена; повторный ACME submit до стабилизации не выполняется. Рабочий Traefik
-не пересоздавался. До cert readiness новый DNS не публикуется как готовый.
+Владелец добавил A/TXT для DNS-01. После первой secondary validation NXDOMAIN
+новая проверка завершилась выпуском сертификата; срок — 2027-02-04, продление
+пока ручное. Временные TXT больше не нужны, wildcard A остаётся для bootstrap.
+
+Общий Traefik пересоздан один раз: image, исходные flags и сетевые адреса сохранены,
+добавлена только согласованная DNS-сеть и фильтрация access-log fields. Остальные
+контейнеры не перезапускались. Все 14 контрольных результатов до/после совпали
+(включая две прежние TLS-ошибки, которые не исправлялись в этой задаче).
+
+Canary обнаружил сохранение ID в ошибке strict SNI AGH. Штатный structured logger
+отключён через `log.enabled: false` без перезаписи native ACL/admin. Legacy logger
+в pinned версии отдельный; поэтому проверены actual Docker/raw logs на success,
+deny и malformed/TLS error paths. Новый canary и действующие IDs не найдены;
+оба временных ClientID отозваны, исходная утечка хранится как positive control
+с уже недействующим тестовым ID. Проверка не заявляет отсутствие любых неизвестных
+внешних sinks и должна повторяться при изменении logging/TLS/runtime inputs.
+
+На production прошли failure-after-rules-write/rollback, disable, all-off, restore
+и сохранение отозванного клиента. Три exact login hosts ChatGPT добавлены вручную
+по официальным рекомендациям с references в каталоге; blanket suffix не включён.
+Для всех пяти текущих hosts проверены public DoH/DoT и origin CA/TLS извне VPS.
+Native accepted generation определяется из mounted relay/Compose metadata;
+bootstrap input не используется для восстановления live allowed_clients.
+
+Независимое review технического rollout — PASS.
+[Production evidence и ограничения](reports/2026-11-06/production-pilot.md).
+Обязательный остаток до product DONE: реальная работа системного DoT на телефоне
+при home→mobile и DoH роутера, ChatGPT login/message/file/CDN/reopen, обычный сайт
+напрямую. Строки подключения выдаются только в private chat. Полный GOAL не закрыт.
