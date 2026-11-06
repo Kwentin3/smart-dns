@@ -41,7 +41,7 @@ evidence, not evidence that its service works through this VPS.
 | Actual Traefik / HAProxy suffix routing | 33 checks: public-CA origin TLS through edge and direct relay, actual-SNI own HTTPS, selected A/AAAA/SVCB/HTTPS, excluded names and label-boundary lookalikes | PASS; cleanup PASS |
 | Bounded policy scale | Native HAProxy syntax in dynamic and fixed-origin modes and observed Traefik TCP routing for 2048 exact patterns; edge memory 19.21 MiB under its 128 MiB limit | PASS parsing/resource smoke; traffic capacity not claimed |
 | Native actual status | Before apply: mounted five-host generation and four desired/actual discrepancies. After apply: mounted eight-namespace generation, matching rules/image/labels/bytes, no findings | PASS |
-| Scheduled source workflow on the default branch | Daily collector and one proposal PR, candidate identity checks, contracts before publication | Pending activation/run |
+| Source workflow on the default branch | Active daily schedule, successful manual default-branch run 42276996672; actual artifact checksum readback and unchanged candidate | PASS for active configuration and executed no-change path; future cron tick and changed-source PR not yet observed |
 | This revision in production | Corrected operator `5a5ab39`, eight approved namespaces; native apply/readback preserved admission and all protected containers. External verified DoH/DoT and origin TLS: 96 checks | PASS technical rollout; application/device acceptance remains open |
 
 Exact-only legacy smoke/lab consumers now use the same registry projection and
@@ -114,12 +114,28 @@ auto-merge, deploy, change service preferences or alter native client/admin stat
 Bot-created PRs do not start independent PR CI through `GITHUB_TOKEN`; candidate
 contracts therefore run before publication in the trusted update workflow.
 
+PR #4 is merged into `main`. The workflow is active; repository token defaults
+remain read, with the native option allowing Actions-created PRs enabled. The
+[first executed run](https://github.com/Kwentin3/smart-dns/actions/runs/42276996672)
+completed both collect and publish jobs. Accepted contracts, real collection,
+artifact transfer and identity extraction passed. The downloaded artifact's
+accepted and candidate hashes matched the checked-in registry, with
+`changed=false` and the same upstream commit. PR creation was correctly skipped.
+No source changes were manufactured to force publication. The first actual
+changed-source PR and a future cron-triggered run remain unobserved.
+
+Independent milestone outcome review inspected the collected native, deployment,
+wire and Actions artifacts and returned PASS for registry/native operations and
+activated collection. This verdict excludes full product acceptance and does not
+claim an observed changed-source PR publication.
+
 Approved suffixes already cover new children and native HAProxy resolution
 refreshes their addresses. New domain roots and unsupported semantics require
 review. Publishing a source snapshot or a proposal alone does not prove the
 runtime was updated. Service-only application continues through the existing
 bounded operator with native readback and rollback.
 
-Real router/phone use, home-to-mobile switching and application login/message/
+The owner explicitly reported that devices have not yet been tested. Real
+router/phone use, home-to-mobile switching and application login/message/
 file/CDN/reopen remain product acceptance work. No registry/test count closes
 those requirements. Certificate DNS-01 renewal is still manual.
