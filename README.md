@@ -3,8 +3,9 @@
 Текущая продуктовая задача — [issue #3](https://github.com/Kwentin3/smart-dns/issues/3):
 [текущее состояние и обязательный остаток](docs/product-goal.md). Private pilot
 развёрнут с отдельным разрешением владельца; [техническая приёмка production](docs/reports/2026-11-06/production-pilot.md)
-завершена. Управление community-каталогом и автоматизация обновлений развиваются;
-расписание ещё не активно до попадания workflow в `main`. Реальные устройства и
+завершена. Готовый community-каталог и ежедневный сбор обновлений доставлены в
+`main`; [первый запуск](https://github.com/Kwentin3/smart-dns/actions/runs/42276996672)
+завершился без изменений источника. Реальные устройства и
 функции приложения ещё не приняты; весь product GOAL не завершён.
 
 Изолированный пилот [issue #1](https://github.com/Kwentin3/smart-dns/issues/1):
@@ -92,9 +93,11 @@ python3 tools/source_proposals.py
 В PR меняется только принятый registry snapshot с provenance и текстом лицензии;
 local preferences и runtime не меняются. Автоматического merge или deploy пока нет.
 Bot PR не запускает независимый PR CI: candidate contracts выполняются в самом
-trusted workflow и так обозначены в отчёте. До merge workflow в default branch
-(`main`) расписание не работает; репозиторию также нужно разрешение Actions на
-создание PR. Ошибка fetch/validation оставляет принятый набор и прежний proposal.
+trusted workflow и так обозначены в отчёте. Workflow активен в default branch
+(`main`), Actions разрешено создавать PR при default read permissions. Первый
+default-branch запуск проверил collector/artifact/extraction с `changed=false`;
+фактическая публикация первого PR ожидает изменения источника. Ошибка
+fetch/validation оставляет принятый набор и прежний proposal.
 
 Для уже работающего пилота `tools/service_policy.py --lab-only` (стенд) или
 `--production` (отдельно разрешённое внедрение) выполняет service-only

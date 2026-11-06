@@ -7,7 +7,7 @@
 Текущий технический результат: готовый index 2019 source lists, выбранные definitions,
 8 reviewed namespaces ChatGPT/Claude на production, actual status `matches` и 96
 внешних DoH/DoT/origin-TLS checks. Новые roots/unsupported predicates остаются на
-review. Workflow подготовлен к доставке в default branch и фактическому запуску;
+review. Ежедневный workflow доставлен в `main`, включён и фактически запущен;
 реальные устройства/смена сети и функции приложений ещё не приняты. Подробная
 проверяемая граница — [registry acceptance](reports/2026-11-06/registry-acceptance.md).
 
@@ -318,8 +318,8 @@ native HA syntax в обоих origin modes и Traefik TCP routing для 2048 p
 [registry acceptance](reports/2026-11-06/registry-acceptance.md): широкий accepted
 index, selected definitions, CLI/projection и единый ежедневный proposal workflow.
 Прежние exact smoke consumers теперь читают ту же projection и явно отказываются
-от suffix policy. Полное product DONE требует ещё desired→actual readback рядом с
-выбранными сервисами, доставки workflow в default branch и реальной приёмки
+от suffix policy. Read-only desired→actual status и service-only применение
+подтверждены на production. Полное product DONE требует ещё реальной приёмки
 устройств/основных функций. Mixed-case SNI admission через оба hop доказан отдельно;
 TLS timeout воспроизведён прямым запросом к тому же origin IP и имеет неизвестную
 внешнюю причину. Обычные lowercase подключения проходят. Исправленный оператор
@@ -327,3 +327,18 @@ TLS timeout воспроизведён прямым запросом к тому
 desired/actual drift к matches, внешние 96 checks PASS. Первый отказ после rules
 write автоматически вернул прежнее поколение с readback; причина сверки Compose
 literal-dollar labels устранена. Admission/protected containers сохранены.
+
+Workflow находится в default `main` после merge PR #4 и имеет state `active`.
+Ежедневное расписание — 06:23 UTC / 09:23 Москва. Первый фактический запуск
+[42276996672](https://github.com/Kwentin3/smart-dns/actions/runs/42276996672)
+выполнен вручную на default branch: collect, artifact upload/download и candidate
+identity validation PASS. Artifact прочитан обратно: `changed=false`, upstream
+commit и accepted/candidate checksums совпадают. PR-публикация корректно пропущена;
+первый реальный changed-source PR и будущий scheduled tick ещё не наблюдались.
+Auto-merge/deploy нет; новые risky scopes не активируются из внешнего списка.
+
+Обязательный остаток: владелец ответил «Ещё не проверял» для Huawei/Keenetic,
+ChatGPT login/message/file и Wi-Fi → mobile. Issue #3 и полный GOAL остаются открыты.
+Следующий шаг — этот реальный пользовательский прогон; endpoint-строки прежние.
+Renewal DNS-01 сертификата пока ручной. Ранее принятые native checks повторяются
+только при изменении входов/условий или новом расхождении.
