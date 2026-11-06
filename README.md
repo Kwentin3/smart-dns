@@ -11,7 +11,7 @@ AdGuard Home → точные HostSNI rules Traefik → HAProxy → фиксир
 Текущие одобренные exact hosts задаёт только [сервисный каталог](rules/pilot.json).
 Вход, сообщения, CDN, файлы, повторные
 сессии и устройства целиком пока не приняты; Gemini отложен.
-[Текущий GOAL и решения](docs/refactor.md).
+[Историческая приёмка рефакторинга](docs/refactor.md).
 
 ## Устройство
 
@@ -24,11 +24,11 @@ metadata, multicast, IPv6, собственный ingress и provider-service IP
 
 Для candidate доступен optional `settings.origin_dns: ["9.9.9.9"]`: штатный
 HAProxy разрешает одобренный SNI и проверяет выбранный IPv4 перед соединением.
-В этом режиме `--origins` не передают. Механизм проверен отдельно; полный
-интегрированный runtime пока не принят. По умолчанию остаётся fixed-origin режим.
+В этом режиме `--origins` не передают. Он принят в общем runtime и текущем private
+pilot. По умолчанию lab renderer сохраняет fixed-origin режим.
 
 AGH использует native ClientID-only `allowed_clients` и обязательную admin-учётную
-запись с bcrypt hash. Узкая DNS-сеть соединяет только AGH и lab Traefik. Plain DNS
+запись с bcrypt hash. DNS-сеть соединяет AGH с edge и, при DoT, с relay. Plain DNS
 5353 в lab без DoT остаётся внутренним и не публикуется; при DoT plain DNS отключён.
 Public DoH route не ведёт к management;
 native login дополнительно защищает прямой доступ. AGH работает под UID/GID
