@@ -76,8 +76,10 @@ apply/readback/restore, новые roots остаются pending; удален�
 `tools/certificate_deploy.py` публикует уже выпущенную Certbot пару в существующий
 TLS-каталог после проверки цепочки, имён, ключа и срока. AGH подхватывает файлы без
 рестарта; hook проверяет выдаваемый fingerprint и восстанавливает прежнюю пару
-при сбое. Это deploy hook, а не DNS-проверка или выпуск сертификата. Автоматизация
-issuer пока требует доступа к DNS-панели либо делегирования ACME-проверки.
+при сбое. Выпуском и продлением владеет существующий Certbot: native acme-dns
+обслуживает делегированный challenge namespace, готовый client служит auth hook.
+В текущей установке delegation, staging, production issuance и повторный renewal
+без ручных auth overrides проверены. [Автопродление и evidence](docs/reports/2026-11-07/acme-renewal-candidate.md).
 
 Один [каталог предпочтений](rules/pilot.json) вместе с [registry snapshot](rules/registry.json)
 через `catalog_rules` и `tools/render.py` порождает DNS rules, Traefik labels и

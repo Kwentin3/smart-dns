@@ -1,8 +1,10 @@
-# Автопродление: проверенный кандидат для VK WorkSpace
+# Автопродление: native DNS-01 для VK WorkSpace
 
-Статус: source/lab READY; native authoritative служба развёрнута с отдельным
-разрешением владельца. DNS delegation и unattended renewal пока НЕ ПРИНЯТЫ. Это срез существующего
-[GOAL](../../product-goal.md), а не подтверждение завершения продукта.
+Статус: автопродление принято в рамках этого среза. Native authoritative служба
+развёрнута с отдельным разрешением владельца; после DNS delegation пройдены
+staging, production issuance и renewal без auth overrides. Сертификат до
+2027-02-05 выдаётся AGH без restart. Полный [GOAL](../../product-goal.md) остаётся
+открыт до отложенной пользовательской приёмки устройств и функций приложений.
 
 Владелец подтвердил DNS-панель VK WorkSpace / biz.mail.ru. Официальная
 [API-документация](https://workspace.vk.ru/docs/saas/api) описывает OAuth и операции
@@ -76,14 +78,18 @@
    certbot certonly --non-interactive --cert-name "$SMART_DNS_CERT_NAME" \
      --manual --preferred-challenges dns \
      --manual-auth-hook "$SMART_DNS_ACME_CLIENT" --force-renewal \
+     --server "$SMART_DNS_CA_DIRECTORY" --account "$SMART_DNS_CA_ACCOUNT" \
+     --deploy-hook "$SMART_DNS_DEPLOY_HOOK" \
      -d "$SMART_DNS_CERT_BASE" -d "*.$SMART_DNS_CERT_BASE"
    ```
 
    Текущая lineage содержит одну версию; многократный force-renewal не требуется.
-7. Проверить renewal config и `certbot renew --cert-name CERT_NAME --dry-run` уже
-   без CLI override authenticator. Deploy hook должен проверить новую пару;
+7. Проверить renewal config и `certbot renew --cert-name CERT_NAME --dry-run
+   --non-interactive --no-random-sleep-on-renew` уже без CLI override authenticator.
+   Последний флаг убирает только native jitter из ограниченной проверки.
+   Deploy hook должен проверить новую пару;
    внешний DoT handshake/fingerprint, admission и защищаемые сервисы сохраняются.
-   Тогда пункт автоматического renewal можно принять. Пока он НЕ ПРИНЯТ.
+   Тогда пункт автоматического renewal можно принять. Эти проверки выполнены ниже.
 
 Откат: вернуть только свою renewal config и TLS через проверенный deploy owner,
 остановить/отключить новую ACME-службу, сохранить её private state и client account.
@@ -109,8 +115,7 @@ Runtime limits сервера 64 MiB/10%/32 tasks; native RSS около 2.8 MiB
 v2.0.2; выбран `error`, повтор пройден. Вторая ошибка была в fixture IP allocation
 при recreate; fixture теперь использует native restart с прежним адресом.
 Private lab receipts: `.local/cert-renewal/evidence/`, frozen archive и binary
-hashes сохранены локально. Публичная делегация и staging CA пока требуют
-DNS-записей владельца.
+hashes сохранены локально. Production-проверки приведены ниже.
 
 ## Почему требуется конкретное согласование
 
@@ -143,10 +148,44 @@ Private safe receipts: `.local/cert-renewal/production/`; credentials/backup key
 файлы сверены и удалены, для новых публично читаемых binary/config каталогов
 явно выставлены 0755, повторный запуск успешен. Прежний runtime не затронут.
 
-Остаток этого среза: authoritative/recursive readback делегации, Certbot staging,
-сохранение authenticator в прежней lineage, actual renewal/deploy hook и внешний
-DoT fingerprint. Только после этих проверок автопродление можно считать готовым.
 SAN действующей lineage и поддержка точных CLI flags сверены с установленным
 Certbot 1.12.0. Его фактический hooks.py прекращает deploy hook при dry-run;
-staging-сертификат не публикуется в AGH. Пробный выпуск пока не запускался:
-публичные A/NS/CNAME ещё не видны при контрольном запросе.
+staging-сертификат не публикуется в AGH.
+
+## Принятое автопродление
+
+Владелец добавил три DNS-записи. CNAME подтверждён на обоих authoritative NS,
+recursive Cloudflare получил оба TXT из делегированного namespace. Google сначала
+отдавал cached NODATA; вызов CA начат после положительного authoritative/recursive
+readback, а не по одному сообщению владельца.
+
+1. Certbot staging certonly: exit0, два DNS-01 auth hook и успешная CA validation.
+   Renewal config, обе действующие TLS пары, admission/admin и контейнеры неизменны.
+2. Production certonly для прежней lineage/account: exit0, новый сертификат
+   до 2027-02-05. Native config сохранила `manual_auth_hook` и `renew_hook`, server
+   и account прежние. Указан explicit deploy hook с тем же абсолютным путём, что
+   у directory hook; Certbot 1.12 дедуплицирует его. Соседние renewal configs сохранены.
+3. AGH chain/key байт-в-байт равны новой lineage, UID/GID/mode прежние. Выдаваемый
+   проверенной TLS-сессией leaf fingerprint совпал с issued. AGH/relay/shared edge
+   и остальные контейнеры сохранили ID/StartedAt; native admission/profile неизменны.
+4. Адресный `certbot renew --cert-name … --dry-run --non-interactive
+   --no-random-sleep-on-renew` без auth/deploy overrides: exit0, два auth hook взяты
+   из сохранённой конфигурации, оба DNS challenges прошли. Fake certificate не
+   публиковался: renewal config и все TLS bytes до/после равны.
+5. Снаружи после renewal: шесть DoH/DoT проверок PASS — выбранный A перенаправлен,
+   обычный сайт имеет положительный direct DNS-ответ, неизвестный ClientID REFUSED.
+   Во всех трёх DoT-соединениях system-CA verified leaf совпал с новым issued.
+
+Native существующий certbot.timer active/enabled, команда обслуживает все lineages;
+второй scheduler не создавался. У общей certbot.service остаётся прежний failed
+result из-за Nginx renewal другой lineage. В Certbot 1.12 ошибка одной lineage
+[перехватывается внутри цикла](https://github.com/certbot/certbot/blob/v1.12.0/certbot/certbot/_internal/renewal.py#L406-L469),
+а общий failure поднимается после обработки остальных. Адресный renewal нашей
+lineage прошёл; чужие Nginx/shared Traefik и certificate settings не изменялись.
+Ремонт старой чужой lineage находится вне этого среза.
+
+Private evidence: `production/staging-result.json`, `issuance-result.json`,
+`renewal-check-result.json`, `scheduler-proof.json`, `external-tls-dns.json`
+под `.local/cert-renewal/`. Полные private keys и backup credentials остаются
+только на VPS. Логи этих трёх native вызовов проверены на отсутствие секретов.
+Пользовательские phone/network/message/file сценарии этим этапом не подтверждены.
