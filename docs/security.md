@@ -1,5 +1,11 @@
 # Pilot security boundaries
 
+**Historical lab scope (2026-11-06).** Candidate/NOT_TESTED statements below belong
+to that refactor stage. Current production admission, administration, certificate
+owners and private recovery requirements are in [production operations](operations.md).
+Use the linked production reports for what was actually accepted; this lab text
+does not supersede native client state or the current dynamic-origin policy.
+
 The [refactor GOAL](refactor.md) preserves native AGH, Traefik and HAProxy owners.
 This describes the candidate; actual results and gaps belong in
 [refactor acceptance](reports/2026-11-06/refactor-acceptance.md). Earlier reports

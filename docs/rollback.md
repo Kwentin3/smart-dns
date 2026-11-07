@@ -1,5 +1,11 @@
 # Bounded candidate publication and rollback
 
+**Historical lab scope (2026-11-06).** For current production use
+[recovery scopes and evidence](operations.md#три-разных-восстановления) and
+[the private recovery set](operations.md#что-хранить-вне-vps-и-как-восстанавливать-установку).
+The stop-first lab sequence below is not the current service-only policy operator
+procedure, a component updater, or proof of whole-VPS recovery.
+
 This is the [isolated refactor](refactor.md); its results/cleanup belong in
 [refactor acceptance](reports/2026-11-06/refactor-acceptance.md). No production,
 shared Traefik/Hermes, firewall, system DNS or device-profile change is authorized.
