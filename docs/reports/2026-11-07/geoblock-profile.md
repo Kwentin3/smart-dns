@@ -45,8 +45,8 @@ client/admin state.
 | Resources | AGH 14.01 MiB, edge 19.11 MiB, relay 11.9 MiB under separate 128 MiB limits; no traffic-capacity guarantee |
 | Isolation and cleanup | No discovery labels/socket for test edge; existing container IDs/StartedAt unchanged; owned containers/networks removed |
 | systemd template validation | Native `systemd-analyze verify` PASS |
-| Production GEO apply/status and external wire | Pending |
-| Private daily collector activation and first execution | Pending |
+| Production GEO apply/status and external wire | `6ebfabd`: applied-and-readback, then independent `matches`; admission/protected containers unchanged; 180 external DoH/DoT/origin checks PASS |
+| Private daily collector activation and first execution | Timer active; oneshot Result=success/exit0; actual private proposal `changed=false`, accepted/candidate checksum equal |
 
 Private native inputs and results were collected and read back, with all source
 hashes matching the workspace. Source and fixtures had no production credentials.
@@ -63,3 +63,32 @@ Source coverage and successful DNS/TLS do not establish every application's
 functionality. Google can additionally apply account and egress-IP region checks;
 the authenticated Gemini result requires the owner's real session. No catch-all,
 new proxy, public management port or shared-edge reconfiguration is introduced.
+
+## Production readback
+
+Desired and actual match generation
+`2c15b051777061b8bc4d016993a3140834a5f5f7a2dda74e6933ec9dfc7bc6e7`.
+Both complete source groups are enabled, with no pending roots in this accepted
+snapshot. The previous accepted generation remains available for rollback.
+Canonical live preferences and source snapshot reside under private
+`.local/policy/rules/`; the checked-in Meta pilot is a public example/discovery,
+not a second owner of this deployment's current policy.
+
+The 180 external checks cover all previous namespaces plus Gemini, Google API,
+Notion, Netflix, JetBrains, Canva, Adobe and Copilot: DoH/DoT A rewrites and
+AAAA/HTTPS/SVCB suppression, selected API children, ordinary positive unrewritten
+DNS, unauthorized-client refusal and 18 origin TLS handshakes. Separate anonymous
+HTTP GETs through the deployed relay returned 200 for Gemini `/app` and `/`, with
+title Google Gemini. No user's account or session was used.
+
+The private collector fetched the real source on its first native execution;
+pin `eb64def4353f8e1b9cc483858021979a3481c76e` and both snapshot checksums matched.
+The timer's observed next event was 2026-11-07 06:35:43 UTC, within the configured
+daily delay window. An actual future cron tick and changed-source GEO proposal
+remain unobserved; neither accepted policy nor runtime is modified by collection.
+
+Independent outcome review inspected the raw native, production, wire and timer
+artifacts and returned PASS for this technical full-GEO milestone. The verdict
+excludes authenticated application/device acceptance. Deployed source identity
+is `6ebfabd`; subsequent documentation/reference updates do not alter its runtime
+code or canonical private inputs.

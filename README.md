@@ -5,8 +5,10 @@
 развёрнут с отдельным разрешением владельца; [техническая приёмка production](docs/reports/2026-11-06/production-pilot.md)
 завершена. Готовый community-каталог и ежедневный сбор обновлений доставлены в
 `main`; [первый запуск](https://github.com/Kwentin3/smart-dns/actions/runs/42276996672)
-завершился без изменений источника. Реальные устройства и
-функции приложения ещё не приняты; весь product GOAL не завершён.
+завершился без изменений источника. На VPS дополнительно применён полный приватный
+GeoBlock + Google AI: 492 upstream suffixes, включая Gemini. Native status совпал
+с desired; 180 внешних wire checks прошли. [GEO evidence](docs/reports/2026-11-07/geoblock-profile.md).
+Полная приёмка функций приложений/смены сети ещё не завершена.
 
 Изолированный пилот [issue #1](https://github.com/Kwentin3/smart-dns/issues/1):
 AdGuard Home → точные HostSNI rules Traefik → HAProxy → фиксированный public IPv4.
@@ -14,8 +16,23 @@ AdGuard Home → точные HostSNI rules Traefik → HAProxy → фиксир
 Локальные предпочтения и границы одобрения задаёт [сервисный каталог](rules/pilot.json),
 а сведения community-источника — [принятый snapshot](rules/registry.json).
 Вход, сообщения, CDN, файлы, повторные
-сессии и устройства целиком пока не приняты; Gemini отложен.
+сессии и устройства целиком пока не приняты. Gemini уже включён в GEO-профиле;
+результат с реальной пользовательской сессией требуется подтвердить отдельно.
 [Историческая приёмка рефакторинга](docs/refactor.md).
+
+`rules/pilot.json` и Meta snapshot в Git остаются воспроизводимым публичным
+AI-пилотом/discovery. Полные действующие GEO preferences/snapshot находятся в
+приватных `.local/policy/rules/` на VPS: у GEO-источника не объявлена лицензия на
+перепубликацию. Status/apply для этой установки получают явные private `--rules`
+и `--registry`; локальный `catalog list` без них показывает публичный пример,
+а не удалённый runtime. Клиентами по-прежнему управляет native AdGuard Home.
+
+Полный профиль готовит `python3 tools/bootstrap_geoblock.py`: два готовых списка
+из одного pinned Git source, строгие suffix literals, прежний принятый AI-набор
+сохранён. По умолчанию output — приватная `.local/geoblock-policy`, без запуска
+сервисов и изменения DNS. Новые native systemd templates собирают только приватные
+предложения, ежедневно 06:31 UTC с задержкой до пяти минут; не выполняют deploy и
+не включают новые roots. Публичный Meta collector остаётся отдельным discovery.
 
 ## Устройство
 
