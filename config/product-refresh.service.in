@@ -1,0 +1,17 @@
+[Unit]
+Description=Refresh accepted private Smart DNS source through native policy owners
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+UMask=0077
+ExecStart=/usr/bin/python3 @SOURCE_DIR@/tools/product.py --deployment @DEPLOYMENT_FILE@ refresh
+TimeoutStartSec=900
+TimeoutStopSec=75
+# Give the native child's TERM handler its separate rollback budget.
+KillMode=control-group
+MemoryMax=256M
+CPUQuota=25%
+TasksMax=64
+NoNewPrivileges=true

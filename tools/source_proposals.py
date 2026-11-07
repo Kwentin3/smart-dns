@@ -66,6 +66,13 @@ def proposal(source_document, previous, catalog, fetch=fetch_text):
         selected_changes[name] = {kind: differences(old.get(kind, []), new[kind]) for kind in ("exact", "suffix", "unsupported")}
         selected_changes[name].update(partial=new["partial"], source_blob=new["source_blob"])
     old_source = previous.get("source", {})
+    license_changed = (old_source.get("license_text") != candidate["source"]["license_text"] or
+                       old_source.get("license") != candidate["source"]["license"])
+    review_reasons = []
+    if license_changed:
+        review_reasons.append("license-change")
+    if any(change[kind]["removed"] for change in selected_changes.values() for kind in ("exact", "suffix", "unsupported")):
+        review_reasons.append("selected-rule-removal")
     return {"schema_version": 2, "kind": "service-registry-proposal", "created_at": datetime.now(timezone.utc).isoformat(),
             "policy": "proposal only; no preferences, client admission, admin state or live runtime changes",
             "accepted_registry_sha256": checksum(previous), "candidate_registry_sha256": checksum(candidate),
@@ -76,7 +83,7 @@ def proposal(source_document, previous, catalog, fetch=fetch_text):
                               "removed": sorted(old_index.keys() - new_index.keys()),
                               "changed": sorted(name for name in old_index.keys() & new_index.keys() if old_index[name] != new_index[name])},
             "selected_rule_changes": selected_changes,
-            "license_changed": old_source.get("license_text") != candidate["source"]["license_text"],
+            "license_changed": license_changed, "review_required": bool(review_reasons), "review_reasons": review_reasons,
             "changed": previous != candidate, "candidate_registry": candidate}
 
 

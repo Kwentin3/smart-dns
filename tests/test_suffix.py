@@ -144,11 +144,16 @@ class SuffixPolicyTests(unittest.TestCase):
         self.assertNotIn("HostSNI(`dns.ops.example.com`)", allow)
         self.assertIn("HostSNI(`dns.ops.example.com`)", deny)
         self.assertIn("HostSNI(`ops.example.com`)", deny)
-        for blocked in ("ops.example.com", "child.ops.example.com", "private.example.com"):
+        for blocked in ("ops.example.com", "child.ops.example.com"):
             with self.subTest(blocked=blocked):
                 rules = {"domains": [], "domain_suffixes": [blocked], "excluded_zones": ["private.example.com"]}
                 with self.assertRaisesRegex(ValueError, "excluded or own domain"):
                     compile_config(rules, self.settings)
+        excluded = compile_config({"domains": [], "domain_suffixes": ["private.example.com"],
+                                   "excluded_zones": ["private.example.com"]}, self.settings)
+        self.assertEqual(excluded["snapshot.json"]["wire_scope"]["domain_suffixes"], [])
+        self.assertFalse(any("dnsrewrite=NOERROR" in rule for rule in excluded["agh-conf/AdGuardHome.yaml"]["user_rules"]))
+        self.assertNotIn("do-resolve(", excluded["haproxy.cfg"])
 
     def test_typed_validation_reasons_disabled_scope_and_explicit_raw_budget(self):
         projected = approved_rules(self.catalog)

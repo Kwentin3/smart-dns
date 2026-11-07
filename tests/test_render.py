@@ -99,12 +99,11 @@ class RenderContractTests(unittest.TestCase):
         self.assertNotIn("0.0.0.0/0", agh["dns"]["allowed_clients"])
         self.assertNotIn("127.0.0.1", agh["dns"]["allowed_clients"])
 
-    def test_rejects_invalid_excluded_and_own_domains(self):
+    def test_rejects_invalid_and_own_domains_but_filters_excluded_zones(self):
         bad_domains = [
             "*.chatgpt.com", ".chatgpt.com", "ChatGPT.com", "chatgpt.com.",
             "https://chatgpt.com", "chatgpt.com:443", "1.1.1.1", "localhost",
-            "printer.local", "printer.internal", "google.com", "ai.google.com",
-            "microsoft.com", "copilot.microsoft.com", "operator.example.net",
+            "operator.example.net",
             "child.operator.example.net", "dns.example.net", "child.dns.example.net",
         ]
         for domain in bad_domains:
@@ -113,6 +112,13 @@ class RenderContractTests(unittest.TestCase):
                 rules["domains"] = [domain]
                 with self.assertRaises(ValueError):
                     compile_config(rules, self.settings, {domain: "1.1.1.1"})
+        for domain in ("printer.local", "printer.internal", "google.com", "ai.google.com",
+                       "microsoft.com", "copilot.microsoft.com"):
+            with self.subTest(excluded=domain):
+                artifacts = compile_config({**self.rules, "domains": [domain]}, self.settings, {domain: "1.1.1.1"})
+                self.assertEqual(artifacts["agh-conf/AdGuardHome.yaml"]["user_rules"], [])
+                self.assertNotIn("  server fixed ", artifacts["haproxy.cfg"])
+                self.assertEqual(artifacts["compose.lab.json"]["services"]["relay"]["labels"]["traefik.enable"], "false")
 
     def test_native_admin_account_is_required_and_confined_to_agh_config(self):
         artifacts = self.render()
