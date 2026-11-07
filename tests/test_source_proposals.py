@@ -106,6 +106,37 @@ class SourceProposalTests(unittest.TestCase):
         self.assertEqual(licensed["review_reasons"], ["license-change"])
         self.assertEqual(self.previous, original)
 
+    def test_added_unsupported_predicates_require_review_without_literal_removal(self):
+        for rule in ({"domain_regex": "^new-risk.example$"},
+                     {"domain": ["narrow.example"], "port": [443]}):
+            with self.subTest(rule=rule):
+                changed = {"version": 2, "rules": [
+                    {"domain": ["auth.openai.com"], "domain_suffix": ["openai.com"]}, rule]}
+                policy = catalog()
+                policy["services"][0]["upstream"]["accept_partial"] = True
+                before = copy.deepcopy((self.previous, policy))
+                result = proposal(source(), self.previous, policy,
+                                  fetch=upstream(openai=changed).__getitem__)
+                self.assertTrue(result["review_required"])
+                self.assertEqual(result["review_reasons"], ["unsupported-rule-addition"])
+                change = result["selected_rule_changes"]["openai"]
+                self.assertFalse(change["exact"]["removed"])
+                self.assertFalse(change["suffix"]["removed"])
+                self.assertTrue(change["unsupported"]["added"])
+                self.assertTrue(result["candidate_registry"]["definitions"]["openai"]["partial"])
+                self.assertEqual((self.previous, policy), before)
+
+    def test_unchanged_unsupported_predicate_does_not_require_repeat_review(self):
+        partial = {"version": 2, "rules": [
+            {"domain": ["auth.openai.com"], "domain_suffix": ["openai.com"]},
+            {"domain_regex": "^previously-reviewed.example$"}]}
+        previous = fetch_snapshot(["openai"], fetch=upstream(OLD, openai=partial).__getitem__)
+        result = proposal(source(), previous, catalog(), fetch=upstream(openai=partial).__getitem__)
+        self.assertTrue(result["changed"])
+        self.assertFalse(result["review_required"])
+        self.assertEqual(result["review_reasons"], [])
+        self.assertEqual(result["selected_rule_changes"]["openai"]["unsupported"], {"added": [], "removed": []})
+
     def test_wrong_source_owner_or_malformed_pin_is_rejected_before_network(self):
         for changes in ({"repository": "https://github.com/other/repository"}, {"license": "MIT"}, {"commit": "sing"}):
             document = source()

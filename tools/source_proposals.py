@@ -73,6 +73,8 @@ def proposal(source_document, previous, catalog, fetch=fetch_text):
         review_reasons.append("license-change")
     if any(change[kind]["removed"] for change in selected_changes.values() for kind in ("exact", "suffix", "unsupported")):
         review_reasons.append("selected-rule-removal")
+    if any(change["unsupported"]["added"] for change in selected_changes.values()):
+        review_reasons.append("unsupported-rule-addition")
     return {"schema_version": 2, "kind": "service-registry-proposal", "created_at": datetime.now(timezone.utc).isoformat(),
             "policy": "proposal only; no preferences, client admission, admin state or live runtime changes",
             "accepted_registry_sha256": checksum(previous), "candidate_registry_sha256": checksum(candidate),

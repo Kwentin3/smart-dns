@@ -12,7 +12,7 @@ from test_geoblock_registry import fixture, RAW, PIN
 from test_source_proposals import upstream, OLD
 from tools.bootstrap_geoblock import prepare
 from tools.catalog import main as catalog_main, project_catalog
-from tools.registry import GEO_SOURCE_ID, fetch_snapshot
+from tools.registry import FANCY_SOURCE_ID, GEO_SOURCE_ID, fetch_snapshot
 from tools.render import catalog_rules, compile_config, hostname
 from tools.source_proposals import produce
 
@@ -70,6 +70,38 @@ class GeoBlockPolicyTests(unittest.TestCase):
             snapshot["source"].update(source)
             with self.subTest(source=source), self.assertRaises(ValueError):
                 catalog_rules(self.catalog, snapshot)
+
+    def test_fancy_candidate_preserves_existing_geo_baseline_and_native_match_types(self):
+        from test_fancy_registry import fancy_fixture
+        artifacts = prepare(self.catalog, self.registry, fetch=fancy_fixture().__getitem__, source_id=FANCY_SOURCE_ID)
+        catalog, registry = artifacts["rules/pilot.json"], artifacts["rules/registry.json"]
+        rules = catalog_rules(catalog, registry)
+        for old in self.catalog["services"]:
+            kept = next(service for service in catalog["services"] if service["id"] == old["id"])
+            self.assertEqual(kept["enabled"], old["enabled"])
+            if "upstream" in old:
+                self.assertNotIn("upstream", kept)
+                self.assertIn(self.registry["source"]["commit"], kept["source_path"])
+        self.assertEqual(catalog["excluded_domains"], self.catalog["excluded_domains"])
+        self.assertTrue(set(catalog_rules(self.catalog, self.registry)["domain_suffixes"]) <= set(rules["domain_suffixes"]))
+        new = next(service for service in rules["service_states"] if service["id"] == "community-geo")
+        self.assertEqual(new["domains"], registry["definitions"]["community-geo"]["exact"])
+        self.assertEqual(new["domain_suffixes"], registry["definitions"]["community-geo"]["suffix"])
+        self.assertEqual(new["upstream"]["source"], FANCY_SOURCE_ID)
+        self.assertEqual(new["upstream_state"]["pending_scope"], [])
+
+    def test_fancy_source_proposal_is_private_and_keeps_native_types(self):
+        from test_fancy_registry import fancy_fixture
+        from tools.source_proposals import proposal
+        artifacts = prepare(self.catalog, self.registry, fetch=fancy_fixture().__getitem__, source_id=FANCY_SOURCE_ID)
+        before = copy.deepcopy(artifacts)
+        result = proposal(artifacts["rules/sources.json"], artifacts["rules/registry.json"],
+                          artifacts["rules/pilot.json"], fetch=fancy_fixture().__getitem__)
+        self.assertFalse(result["changed"])
+        self.assertFalse(result["review_required"])
+        self.assertEqual(result["selected_lists"], ["community-geo"])
+        self.assertTrue(result["source"]["private_only"])
+        self.assertEqual(artifacts, before)
 
     def test_upstream_new_root_is_pending_while_approved_descendant_can_update(self):
         new = fetch_snapshot(["geoblock", "google-ai"], self.registry,

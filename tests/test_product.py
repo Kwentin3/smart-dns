@@ -1,6 +1,8 @@
 """Operator transactions over real compiled generations, with native IO injected."""
 import copy
 import json
+import subprocess
+import sys
 from pathlib import Path
 import tempfile
 import unittest
@@ -216,6 +218,69 @@ class ProductTests(unittest.TestCase):
         return {"version": 2, "rules": [{"domain": ["auth.openai.com", "new.api.openai.com"],
                                          "domain_suffix": ["openai.com", "pending.example"]}]}
 
+    def test_catalog_view_distinguishes_discovery_policy_and_unchecked_runtime(self):
+        self.refresh_fixture()
+        inputs = product.read_inputs(self.deployment)
+        inputs["catalog"]["services"][-1]["id"] = "my-openai"
+        inputs["catalog"]["services"][-1]["enabled"] = False
+        inputs["catalog"]["excluded_domains"] = {"auth.openai.com": "Owner choice"}
+        before = copy.deepcopy(inputs)
+        report = product.catalog_view(inputs)
+        entries = {entry["id"]: entry for entry in report["entries"]}
+        self.assertEqual(entries["my-openai"]["state"], "off")
+        self.assertEqual(entries["manual"]["state"], "on")
+        self.assertNotIn("openai", entries)
+        discovered = set(inputs["registry"]["index"]) - {"openai"}
+        self.assertTrue(discovered)
+        for name in discovered:
+            self.assertEqual(entries[name]["state"], "discovered")
+        self.assertEqual(report["excluded_domains"], {"auth.openai.com": "Owner choice"})
+        for key in ("runtime", "network_path", "user_functionality"):
+            self.assertEqual(report[key], "not-checked")
+        detail = product.catalog_view(inputs, "openai")["entries"]
+        self.assertEqual(detail[0]["id"], "my-openai")
+        self.assertEqual(detail[0]["service"]["upstream"]["approved_scope"]["suffix"], ["openai.com"])
+        self.assertEqual(detail[0]["definition"]["source_blob"], inputs["registry"]["index"]["openai"]["blob_sha"])
+        self.assertNotIn("raw", detail[0]["definition"])
+        self.assertEqual(inputs, before)
+        with self.assertRaisesRegex(PolicyError, "unknown"):
+            product.catalog_view(inputs, "absent")
+
+    def test_catalog_cli_needs_no_password_settings_or_live_runtime(self):
+        self.refresh_fixture()
+        deployment = {key: str(value) if isinstance(value, Path) else value for key, value in self.deployment.items()}
+        deployment["schema_version"] = 1
+        config = self.deployment["catalog"].parent.parent / "deployment.json"
+        config.write_text(json.dumps(deployment), encoding="utf-8")
+        self.deployment["settings"].unlink()
+        self.deployment["admin_password_file"].unlink()
+        original = {key: self.deployment[key].read_bytes() for key in ("catalog", "registry")}
+        for command in (["list"], ["show", "openai"]):
+            process = subprocess.run([sys.executable, str(product.ROOT / "tools/product.py"),
+                                      "--deployment", str(config), *command], capture_output=True, text=True, timeout=15)
+            self.assertEqual(process.returncode, 0, process.stdout + process.stderr)
+            report = json.loads(process.stdout)
+            self.assertEqual(report["status"], "desired-policy-only")
+            self.assertEqual(report["runtime"], "not-checked")
+        self.assertEqual({key: self.deployment[key].read_bytes() for key in original}, original)
+        self.assertFalse(self.deployment["releases"].exists())
+        self.assertFalse(self.deployment["receipts"].exists())
+
+    def test_manual_name_collision_preserves_independent_discovery_definition(self):
+        self.refresh_fixture()
+        inputs = product.read_inputs(self.deployment)
+        inputs["catalog"]["services"] = [inputs["catalog"]["services"][0]]
+        inputs["catalog"]["services"][0]["id"] = "openai"
+        entries = product.catalog_view(inputs, "openai")["entries"]
+        self.assertEqual(len(entries), 2)
+        local = next(entry for entry in entries if entry["entry_type"] == "local-policy")
+        discovered = next(entry for entry in entries if entry["entry_type"] == "discovery")
+        self.assertEqual(local["state"], "on")
+        self.assertIsNone(local["index"])
+        self.assertIsNone(local["definition"])
+        self.assertEqual(discovered["state"], "discovered")
+        self.assertEqual(discovered["definition"]["source_blob"], inputs["registry"]["index"]["openai"]["blob_sha"])
+
     def test_refresh_accepts_addition_after_native_and_keeps_new_root_pending(self):
         additive = self.refresh_fixture()
         result = self.operate("refresh", fetch=upstream(openai=additive).__getitem__)
@@ -232,6 +297,20 @@ class ProductTests(unittest.TestCase):
         self.assertNotIn("pending.example", rules["domain_suffixes"])
         native_dns = json.loads((self.actual / "agh-conf/AdGuardHome.yaml").read_text())["user_rules"]
         self.assertFalse(any("pending.example" in rule for rule in native_dns))
+
+    def test_refresh_new_unsupported_predicate_is_review_only_with_last_good_preserved(self):
+        self.refresh_fixture()
+        changed = {"version": 2, "rules": [{"domain": ["auth.openai.com"],
+                    "domain_suffix": ["openai.com"]}, {"domain_regex": "^unreviewed.example$"}]}
+        result = self.operate("refresh", fetch=upstream(openai=changed).__getitem__)
+        self.assertEqual(result["status"], "review-required")
+        self.assertIn("unsupported-rule-addition", result["review_reasons"])
+        self.assertEqual(self.canonical_bytes(), self.original)
+        self.assertEqual(self.actual, self.accepted)
+        self.assertEqual(self.calls, [])
+        self.assertFalse(self.deployment["releases"].exists())
+        proposal = json.loads((self.deployment["receipts"] / "source-proposals/latest.json").read_text(encoding="utf-8"))
+        self.assertTrue(proposal["selected_rule_changes"]["openai"]["unsupported"]["added"])
 
     def test_refresh_removal_or_license_change_leaves_canonical_and_runtime_unchanged(self):
         additive = self.refresh_fixture()
