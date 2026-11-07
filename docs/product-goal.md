@@ -5,6 +5,45 @@
 Это единая текущая запись продуктовой задачи; [рефакторинг](refactor.md) остаётся
 завершённым инфраструктурным этапом. Product GOAL **не завершён**.
 
+## Production rollout #14, 2026-11-07
+
+Владелец разрешил [полное развёртывание](https://github.com/Kwentin3/smart-dns/issues/14)
+проверенного PR #13 и необходимый `max_policy_entries=4096`.
+[Уточнение приоритета](https://github.com/Kwentin3/smart-dns/issues/12#issuecomment-6705462632):
+широкие suffix и их побочный охват приняты как компромисс; ручное сужение каждого
+имени не требуется. Ранее записанный вопрос о широте больше не блокирует rollout.
+
+Граница: один штатный service-only rollout существующего Smart DNS, прежний
+baseline/OFF/exclusions/ClientID и рабочий откат сохранены. Общий Traefik, Hermes,
+соседние приложения, сети/порты/firewall/DNS и сертификаты не меняются. При дрейфе
+или неготовом откате остановка до изменения; production не используется для lab.
+
+- [x] Read-only actual совпал с последним принятым поколением `f17746a8…`;
+  канонические catalog/registry совпали с сохранённой baseline, findings пусты.
+- [x] Внешний baseline: 64 DNS/TLS checks PASS; новые не-AI примеры пока direct.
+- [x] Кандидат и restore подготовлены на актуальных приватных settings через
+  существующие `prepare_catalog` / `product.prepare` / `validate_candidate`;
+  old manifest воспроизведён точно, infrastructure неизменна, требуется 4096.
+- [x] Сверить соседние маршруты, подготовить rollback/pointer publication и
+  выполнить один controlled rollout с фиксацией actual и protected state.
+- [x] Внешние DoH/DoT/direct/denied, новые не-AI DNS/TLS, ресурсы и соседние
+  маршруты после применения; краткий отчёт и сохранённый путь отката.
+
+Actual `smart-dns status=matches`, поколение `239c889b…`: 2508 native rules,
+114 exact + 1140 suffix wire roots. ClientID/24 protected containers и их
+конфигурация/сети сохранены; новый relay единственный пересозданный контейнер.
+64 внешних DNS/TLS checks и 12 соседних route comparisons PASS. Старые два TLS
+verification errors не изменились. Единственное изменённое поле settings —
+согласованный лимит 4096; существующие shortcut/refresh service указывают новый
+проверенный source, timer сохранён и не запускался принудительно.
+[Production evidence и границы проверки](reports/2026-11-07/production-fancy-rollout.md).
+
+Следующий шаг — пользовательская приёмка основных функций не-AI ресурсов и
+устройств. Исходный source pin Fancy применён без замены:
+`25e7b1912eca4b31d44906af0df10f00c85ab268`.
+#12 остаётся открытым до пользовательских функций/устройств. Прежние запреты на
+activation ниже относятся к repo-only этапу и заменены этим узким допуском #14.
+
 ## Текущий срез #12, 2026-11-07
 
 Результат: универсальное расширяемое GEO-покрытие из поддерживаемых community
@@ -56,7 +95,7 @@ source outage и rollback. Полные 2508 native AGH rules и Docker label 94
   Реальные refresh были без изменения upstream; changed-source Fancy production
   не заявляется. На production lab не запускалась; новые полномочия остаются
   предложением до допуска.
-- [ ] После отдельного допуска применить проверенный артефакт, подтвердить
+- [x] После отдельного допуска применить проверенный артефакт, подтвердить
   native actual, отрицательные/direct cases, сохранение OFF/exclusions и rollback.
 - [ ] Подтвердить основные функции репрезентативных не-AI ресурсов, ordinary
   sites и смену сети; отделить source coverage, routing и пользовательскую приёмку.
