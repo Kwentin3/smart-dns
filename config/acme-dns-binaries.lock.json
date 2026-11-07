@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "platform": "linux_amd64",
+  "binaries": [
+    {
+      "name": "acme-dns",
+      "version": "v2.0.2",
+      "repository": "acme-dns/acme-dns",
+      "commit": "4e5a69e5fb742dde4f755b7f56aee2aea76e19bf",
+      "url": "https://github.com/acme-dns/acme-dns/releases/download/v2.0.2/acme-dns_2.0.2_linux_amd64.tar.gz",
+      "archive_sha256": "ff7aa309fb916012fc08dc7bd992c329b3930705ecb04161e57a5d910e80e9f0",
+      "binary_sha256": "b6ed5e3df630e873ee1834bd3c51b218b1b753eb29b5c8a0eef8f246405fae46"
+    },
+    {
+      "name": "acme-dns-client",
+      "version": "v0.3",
+      "repository": "acme-dns/acme-dns-client",
+      "commit": "4a06a8c1db7b68b8eca39dcee91c07cc8e3eee9d",
+      "url": "https://github.com/acme-dns/acme-dns-client/releases/download/v0.3/acme-dns-client_0.3_linux_amd64.tar.gz",
+      "archive_sha256": "f7b1892ee9ce2eb22d9d3b5bd8d03d01e2660661d7d461da512f60cca64ae3ef",
+      "binary_sha256": "467cc1fc3af32e2ca9ea18492d5251b3c377c4b2b79eb29eb05682aabb394dc0"
+    }
+  ]
+}
