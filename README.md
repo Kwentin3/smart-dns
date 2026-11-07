@@ -1,5 +1,9 @@
 # Smart DNS
 
+**Действующая production-установка:** [устройство, владельцы, обновления и восстановление](docs/operations.md).
+Этот документ — актуальный операторский вход; lab-описания и датированные отчёты
+ниже сохраняют историю своих этапов.
+
 Текущая продуктовая задача — [issue #12](https://github.com/Kwentin3/smart-dns/issues/12),
 расширяющий [issue #3](https://github.com/Kwentin3/smart-dns/issues/3):
 [текущее состояние и обязательный остаток](docs/product-goal.md). Private pilot

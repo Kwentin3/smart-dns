@@ -1,5 +1,10 @@
 # Pilot architecture
 
+**Historical lab scope (2026-11-06).** The exact-only, fixed-origin refactor below
+is not the current production topology. See [production operations](operations.md)
+for the live suffix/dynamic-origin owners, certificate chains and maintenance.
+Statements below about unchanged production apply only to that isolated stage.
+
 Current work follows [the refactor GOAL](refactor.md). This candidate's results
 belong in [refactor acceptance](reports/2026-11-06/refactor-acceptance.md), not the
 historical [acceptance](reports/2026-11-06/acceptance.md) or
