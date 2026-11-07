@@ -1,0 +1,83 @@
+name: Native GEO candidate
+
+on:
+  pull_request:
+    paths:
+      - 'tools/**'
+      - 'rules/**'
+      - 'config/images.lock.json'
+      - '.github/workflows/native-geo.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Recreate the reviewed candidate privately from verified Git sources
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          umask 077
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          from tools.bootstrap_geoblock import prepare
+          from tools.registry import fetch_url, GEO_SOURCE_ID, FANCY_SOURCE_ID, SOURCE_REPOSITORIES
+          from tools.render import write_new
+          catalog = json.loads(Path('rules/pilot.json').read_text())
+          registry = json.loads(Path('rules/registry.json').read_text())
+          for name, source_id, pin in [('native-baseline', GEO_SOURCE_ID, 'eb64def4353f8e1b9cc483858021979a3481c76e'), ('native-candidate', FANCY_SOURCE_ID, '25e7b1912eca4b31d44906af0df10f00c85ab268')]:
+              endpoint = SOURCE_REPOSITORIES[source_id].replace('https://github.com/', 'https://api.github.com/repos/') + '/commits/'
+              # Reproduce the reviewed candidate; normal product refresh still follows upstream.
+              def frozen_fetch(url):
+                  return fetch_url(endpoint + pin if url == endpoint + 'main' else url)
+              artifacts = prepare(catalog, registry, source_id=source_id, fetch=frozen_fetch)
+              assert artifacts['rules/registry.json']['source']['commit'] == pin, 'Frozen source identity differs'
+              write_new(artifacts, Path('.local') / name)
+              catalog, registry = artifacts['rules/pilot.json'], artifacts['rules/registry.json']
+          PY
+      - name: Pull only the existing digest-pinned lab images
+        run: |
+          python3 - <<'PY'
+          import json, subprocess
+          from pathlib import Path
+          for image in json.loads(Path('config/images.lock.json').read_text()).values():
+              assert '@sha256:' in image
+              subprocess.run(['docker', 'pull', image], check=True, timeout=90)
+          PY
+      - name: Exercise full native Docker-provider policy and clean owned resources
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: >-
+          python3 -m tools.native_lab.run
+          --policy .local/native-candidate/rules
+          --baseline .local/native-baseline/rules
+          --expected-policy-sha256 2e815b2927ecd1d292b2d6258a1a734b40ed577e8dd69da1b0d0ee52c92bc136
+          --out .local/native-evidence
+      - name: Fallback cleanup of this job's fixed fixture project
+        if: always()
+        run: |
+          if test -f .local/native-evidence/compose.lab.json; then
+            docker compose -p smart-dns-geo-native -f .local/native-evidence/compose.lab.json down --volumes --remove-orphans
+          fi
+          test -z "$(docker ps -aq --filter label=com.docker.compose.project=smart-dns-geo-native)"
+          test -z "$(docker network ls -q --filter label=com.docker.compose.project=smart-dns-geo-native)"
+      - name: Publish aggregate receipts only; complete source corpora remain private
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: native-geo-receipts
+          path: |
+            .local/native-evidence/inputs.json
+            .local/native-evidence/readback.json
+            .local/native-evidence/management.json
+            .local/native-evidence/result.json
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 14

@@ -1,8 +1,80 @@
-# Product GOAL #3: управляемый частный Smart DNS
+# Product GOAL #12: универсальный частный Smart DNS
 
-Источник требований: [issue #3](https://github.com/Kwentin3/smart-dns/issues/3).
-Это текущая запись продуктовой задачи; [рефакторинг](refactor.md) остаётся
+Источник требований: [issue #12](https://github.com/Kwentin3/smart-dns/issues/12),
+расширяющий [issue #3](https://github.com/Kwentin3/smart-dns/issues/3).
+Это единая текущая запись продуктовой задачи; [рефакторинг](refactor.md) остаётся
 завершённым инфраструктурным этапом. Product GOAL **не завершён**.
+
+## Текущий срез #12, 2026-11-07
+
+Результат: универсальное расширяемое GEO-покрытие из поддерживаемых community
+реестров, единое управление, безопасные обновления и доказанное выборочное
+проксирование разных категорий. AI-пилот и 492 upstream suffixes — исходная
+проверенная опора, а не конечная граница продукта.
+
+Поручено исследование и подготовка изменений в репозитории. Новый допуск на
+изменение VPS, общего Traefik или расширение фактически включённых правил из #12
+не следует; этот срез не меняет production. Состояние прошлых развёртываний ниже
+приведено по их evidence, новый live readback в этом срезе не выполнялся.
+
+Владельцы сохраняются: `registry.py` получает upstream facts, `catalog.py` хранит
+локальные разрешения и предпочтения, `render.py` проецирует их в native AGH /
+HAProxy / Traefik, `product.py` координирует readback/apply/rollback. Clients/admin
+остаются у AGH, расписание у systemd. Панель, база и второй DNS/proxy не нужны.
+
+Текущий кандидат добавляет `smart-dns list` / `show ID`: чтение accepted discovery
+и desired policy из путей одного deployment manifest без пароля, сети и применения.
+Видны происхождение, ON/OFF/discovered, определения, pending/unsupported, исключения;
+runtime, network path и user functionality явно `not-checked`. `status` остаётся
+штатным способом native readback. Новый неподдерживаемый predicate источника
+теперь останавливает refresh на review до изменения принятого набора/runtime.
+
+Исследование трёх актуальных pinned источников завершено. Готовый Fancy GEO
+JSON v3 даёт 613 exact + 692 suffix predicates сверх сохранённого baseline;
+его source profile подключён тонкой адаптацией существующего загрузчика.
+Приватный кандидат сохраняет прежние grants и добавляет `community-geo`.
+После миграции Fancy становится единственным обновляемым upstream, а прежний
+itdog baseline сохраняется как frozen local policy с provenance; второй
+live source owner не создаётся. Проверено 152 unit/behavior checks, 35 Windows
+AGH wire cases и полный Linux Docker-provider прогон: 52 wire/readback checks,
+восемь реальных CLI-вызовов / 60 checks, включая OFF/exclude после refresh,
+source outage и rollback. Полные 2508 native AGH rules и Docker label 94,282 bytes
+совпали с compiler; pinned images и cleanup подтверждены. Для полной политики нужен явный
+`max_policy_entries: 4096`; production остаётся с прежними settings.
+[Сравнение, компромиссы и границы проверки](reports/2026-11-07/universal-geo-candidate.md).
+
+Обязательный остаток #12:
+
+- [x] Сверить актуальные pinned корпуса нескольких реестров, пересечения и
+  реальные exact/suffix границы с действующим набором; показать непокрытое.
+- [x] Выбрать минимальный поддерживаемый source path для дополнительного GEO
+  покрытия; не строить платформу объединения источников без необходимости.
+- [x] Подготовить и проверить конкретную расширенную policy и обновление через
+  существующих владельцев. Native Docker-provider lab выполнена на изолированном
+  GitHub runner, source revision `1a1bbfe`, [run 42360351223](https://github.com/Kwentin3/smart-dns/actions/runs/42360351223).
+  Артефакт прочитан обратно, checksum входов совпал с локальной репетицией.
+  Реальные refresh были без изменения upstream; changed-source Fancy production
+  не заявляется. На production lab не запускалась; новые полномочия остаются
+  предложением до допуска.
+- [ ] После отдельного допуска применить проверенный артефакт, подтвердить
+  native actual, отрицательные/direct cases, сохранение OFF/exclusions и rollback.
+- [ ] Подтвердить основные функции репрезентативных не-AI ресурсов, ordinary
+  sites и смену сети; отделить source coverage, routing и пользовательскую приёмку.
+
+Поставка разрешённой repo-части — [PR #13](https://github.com/Kwentin3/smart-dns/pull/13).
+В [ревью владельца](https://github.com/Kwentin3/smart-dns/pull/13#pullrequestreview-5811444613)
+merge этого repo-only среза разрешён после фиксации трёх release questions;
+допуск на активацию Fancy из этого решения не следует. Перед запуском остаются
+явные решения: побочный охват широких suffix и нужные сужения, ручная проверка
+актуальности frozen grants, ограниченная приёмка влияния на сайты/ресурсы/Hermes
+с согласованным бюджетом 4096 и откатом. [Подробные ограничения и сценарий](reports/2026-11-07/universal-geo-candidate.md#release-questions-before-activation).
+Следующий этап — сверка live baseline, отдельное согласование конкретного
+расширения и лимита, service-only rollout/readback и пользовательские сценарии.
+Готовность текущего этапа и
+готовность всего продукта различаются. Полный GOAL
+остаётся открытым, пока обязательный остаток не закрыт evidence. Историческое
+утверждение ниже, что осталась только приёмка телефона, относится к объёму #3;
+#12 расширяет этот объём.
 
 ## Переход от пилота к эксплуатации, 2026-11-07
 

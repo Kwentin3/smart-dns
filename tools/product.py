@@ -56,6 +56,34 @@ def status(deployment, inputs, *, status_reader=read_status):
         production=deployment["mode"] == "production", registry=inputs["registry"], origins=inputs.get("origins"))
 
 
+def catalog_view(inputs, service_id=None):
+    """Read accepted discovery and desired policy; never infer live/user success."""
+    registry = inputs["registry"]
+    states = catalog_rules(inputs["catalog"], registry)["service_states"]
+    local = {state["id"]: state for state in states}
+    upstream = {state["upstream"]["list"]: state for state in states if "upstream" in state}
+    entries = []
+    candidates = list(local.items()) + [(identifier, None) for identifier in registry["index"] if identifier not in upstream]
+    for identifier, state in sorted(candidates, key=lambda item: item[0]):
+        list_id = state.get("upstream", {}).get("list") if state else identifier
+        # A manual local name may happen to equal an unrelated discovery ID.
+        entry = {"id": identifier, "entry_type": "local-policy" if state else "discovery",
+                 "state": ("on" if state["enabled"] else "off") if state else "discovered",
+                 "service": state, "index": registry["index"].get(list_id) if list_id else None}
+        definition = registry["definitions"].get(list_id)
+        entry["definition_available"] = definition is not None
+        if service_id is not None and service_id in (identifier, list_id):
+            entry["definition"] = {key: value for key, value in definition.items() if key != "raw"} if definition else None
+        entries.append(entry)
+    if service_id is not None:
+        entries = [entry for entry in entries if service_id in (entry["id"], (entry["service"] or {}).get("upstream", {}).get("list"))]
+        require(bool(entries), "unknown local service or accepted discovery ID")
+    return {"status": "desired-policy-only", "source": registry.get("source"),
+            "runtime": "not-checked", "network_path": "not-checked", "user_functionality": "not-checked",
+            "excluded_domains": inputs["catalog"]["excluded_domains"],
+            "excluded_zones": inputs["catalog"]["excluded_zones"], "entries": entries}
+
+
 def run_native(arguments, environment):
     """Allow the native child's own rollback after timeout; never kill it blindly."""
     child = subprocess.Popen(arguments, env=environment, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -207,6 +235,8 @@ def main():
     parser.add_argument("--deployment", type=Path, default=Path("/opt/smart-dns/.local/deployment.json"))
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("status")
+    commands.add_parser("list")
+    commands.add_parser("show").add_argument("service_id")
     commands.add_parser("apply")
     commands.add_parser("refresh")
     for name in ("on", "off", "add", "exclude", "include"):
@@ -220,7 +250,10 @@ def main():
     args = parser.parse_args()
     try:
         deployment = load_deployment(args.deployment)
-        if args.command == "status":
+        if args.command in ("list", "show"):
+            inputs = {key: json.loads(deployment[key].read_text(encoding="utf-8")) for key in ("catalog", "registry")}
+            report = catalog_view(inputs, getattr(args, "service_id", None))
+        elif args.command == "status":
             report = status(deployment, read_inputs(deployment))
         else:
             import fcntl
@@ -237,7 +270,7 @@ def main():
                     reason=getattr(args, "reason", None), domains=getattr(args, "domain", []),
                     suffixes=getattr(args, "suffix", []), to=getattr(args, "to", None))
         print(json.dumps(report, ensure_ascii=False, indent=2))
-        return 0 if report["status"] == "matches" else 1
+        return 0 if report["status"] in ("matches", "desired-policy-only") else 1
     except Exception as error:
         print(json.dumps({"status": "failed", "error": str(error) if isinstance(error, PolicyError) else type(error).__name__}))
         return 1

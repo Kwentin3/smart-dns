@@ -1,6 +1,7 @@
 # Smart DNS
 
-Текущая продуктовая задача — [issue #3](https://github.com/Kwentin3/smart-dns/issues/3):
+Текущая продуктовая задача — [issue #12](https://github.com/Kwentin3/smart-dns/issues/12),
+расширяющий [issue #3](https://github.com/Kwentin3/smart-dns/issues/3):
 [текущее состояние и обязательный остаток](docs/product-goal.md). Private pilot
 развёрнут с отдельным разрешением владельца; [техническая приёмка production](docs/reports/2026-11-06/production-pilot.md)
 завершена. Готовый community-каталог и ежедневный сбор обновлений доставлены в
@@ -44,6 +45,8 @@ AI-пилотом/discovery. Полные действующие GEO preferences
 
 ```sh
 python3 tools/product.py status
+python3 tools/product.py list
+python3 tools/product.py show geoblock
 python3 tools/product.py off chatgpt --reason 'Paused by owner'
 python3 tools/product.py on chatgpt --reason 'Enabled by owner'
 python3 tools/product.py add example --suffix example.org --reason 'Reviewed service'
@@ -53,9 +56,19 @@ python3 tools/product.py refresh
 python3 tools/product.py rollback --to GENERATION
 ```
 
+`list` и `show ID` в текущем кандидате читают discovery и desired policy из
+deployment manifest без сети и admin password. Показывают ON/OFF/discovered,
+source/commit, ограничения и исключения. Они явно не подтверждают runtime,
+сетевой путь или функции приложения; для native actual используется `status`.
+Новые команды требуют установки этого кандидата; их наличие на VPS не заявлено.
+
+Для #12 подготовлен приватный расширенный source profile `russia-fancy-geo`:
+готовый смешанный exact/suffix JSON, прежний baseline сохранён. Новый профиль
+на VPS не применён; [исследование, кандидат и обязательный остаток](docs/reports/2026-11-07/universal-geo-candidate.md).
+
 Пути к приватным inputs, releases и management задаются один раз в
 `/opt/smart-dns/.local/deployment.json`; [пример](config/deployment.example.json)
-не содержит секретов. `status` читает actual из native AGH и relay. Остальные
+не содержит секретов. `status` читает actual из native AGH и relay. Изменяющие
 команды готовят candidate и restore, вызывают существующий service-only operator
 и публикуют preferences после успешного readback. Клиенты и администратор остаются
 у AGH. Изменение состава fixed origins требует согласованной карты адресов;

@@ -17,9 +17,11 @@ API = "https://api.github.com/repos/MetaCubeX/meta-rules-dat"
 RAW = "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat"
 BRANCH = "sing"
 GEO_SOURCE_ID = "itdog-geoblock"
+FANCY_SOURCE_ID = "russia-fancy-geo"
 SOURCE_REPOSITORIES = {
     "metacubex-sing": REPOSITORY,
     GEO_SOURCE_ID: "https://github.com/itdoginfo/allow-domains",
+    FANCY_SOURCE_ID: "https://github.com/Noktomezo/RussiaFancyLists",
 }
 API_LIMIT, RAW_LIMIT, MAX_SELECTED = 2 * 1024 * 1024, 1024 * 1024, 64
 
@@ -78,8 +80,8 @@ def normalize_rules(document):
     Domain matcher fields are OR alternatives. A non-domain condition or logical
     wrapper may narrow them, so such a whole rule must never become a broad list.
     """
-    if not isinstance(document, dict) or type(document.get("version")) is not int or document["version"] != 2 or not isinstance(document.get("rules"), list):
-        raise RegistryError("expected Sing-box version 2 rules array")
+    if not isinstance(document, dict) or type(document.get("version")) is not int or document["version"] not in (2, 3) or not isinstance(document.get("rules"), list):
+        raise RegistryError("expected Sing-box version 2 or 3 rules array")
     exact, suffix, unsupported = set(), set(), []
     if set(document) - {"version", "rules"}:
         return {"exact": [], "suffix": [], "unsupported": [{"field": "document", "value": copy.deepcopy(document),
@@ -127,9 +129,10 @@ def fetch_snapshot(selected, previous=None, fetch=fetch_url, *, source_id=None):
     if previous_repository and previous_repository != repository:
         raise RegistryError("previous snapshot belongs to a different registry source")
     is_geo = source_id == GEO_SOURCE_ID
+    is_fancy = source_id == FANCY_SOURCE_ID
     api_base = "https://api.github.com/repos/" + repository.removeprefix("https://github.com/")
     raw_base = "https://raw.githubusercontent.com/" + repository.removeprefix("https://github.com/")
-    branch = "main" if is_geo else BRANCH
+    branch = "main" if is_geo or is_fancy else BRANCH
 
     def raw(url, limit):
         try:
@@ -187,6 +190,14 @@ def fetch_snapshot(selected, previous=None, fetch=fetch_url, *, source_id=None):
             sha = child(listing, filename, "blob")
             item = next(item for item in listing if item.get("path") == filename and item.get("type") == "blob")
             entries.append({**item, "path": service_id + ".json", "sha": sha, "source_path": directory + "/" + filename})
+    elif is_fancy:
+        lists = tree(child(root, "lists", "tree"))
+        index_tree = child(lists, "geoblock-sing-box", "tree")
+        listing = tree(index_tree)
+        sha = child(listing, "full.json", "blob")
+        item = next(item for item in listing if item.get("path") == "full.json" and item.get("type") == "blob")
+        entries = [{**item, "path": "community-geo.json", "sha": sha,
+                    "source_path": "lists/geoblock-sing-box/full.json"}]
     else:
         geo = tree(child(root, "geo", "tree"))
         index_tree = child(geo, "geosite", "tree")
@@ -203,16 +214,18 @@ def fetch_snapshot(selected, previous=None, fetch=fetch_url, *, source_id=None):
         if not isinstance(size, int) or size < 0:
             raise RegistryError("registry blob size is missing or invalid")
         kind = "attribute" if "@" in service_id else "category" if service_id.startswith("category-") else "group" if service_id.startswith(("geolocation-", "geoip-")) or service_id in ("cn", "private", "gfw", "tld-cn", "tld-!cn") else "service-candidate"
-        index[service_id] = {"path": item["source_path"] if is_geo else "geo/geosite/" + name, "blob_sha": _sha(item["sha"]), "size": size, "kind": "category" if is_geo else kind}
+        index[service_id] = {"path": item["source_path"] if is_geo or is_fancy else "geo/geosite/" + name, "blob_sha": _sha(item["sha"]), "size": size, "kind": "category" if is_geo or is_fancy else kind}
     if any(item not in index for item in selected):
         raise RegistryError("selected registry ID missing upstream; accepted snapshot must be retained")
     license_pin, license_root = pin, root
-    if not is_geo and not any(item.get("path") == "LICENSE" and item.get("type") == "blob" for item in root):
+    if not is_geo and not is_fancy and not any(item.get("path") == "LICENSE" and item.get("type") == "blob" for item in root):
         master = api("/commits/master")
         license_pin = _sha(master["sha"])
         license_root = tree(master["commit"]["tree"]["sha"])
     license_text = None if is_geo else blob(license_pin, "LICENSE", child(license_root, "LICENSE", "blob"))
     license_name = None if is_geo else "GPL-3.0" if "GNU GENERAL PUBLIC LICENSE" in license_text and "Version 3" in license_text else "UNKNOWN"
+    if is_fancy:
+        license_name = "MIT" if "MIT License" in license_text and "Permission is hereby granted" in license_text else "UNKNOWN"
     definitions = {}
     old = (previous or {}).get("definitions", {})
     for service_id in selected:
@@ -241,5 +254,7 @@ def fetch_snapshot(selected, previous=None, fetch=fetch_url, *, source_id=None):
             "license_reference": None if is_geo else repository + "/blob/" + license_pin + "/LICENSE", "license_text": license_text}
     if is_geo:
         source.update(private_only=True, license_note="No license grant established; fetched corpus is private-only and must not be publicly redistributed.")
+    elif is_fancy:
+        source.update(private_only=True, license_note="Repository license does not establish grants for aggregated third-party rules; fetched corpus is private-only and must not be publicly redistributed.")
     return {"schema_version": 1, "source": source,
             "index": dict(sorted(index.items())), "definitions": definitions}
