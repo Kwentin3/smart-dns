@@ -3,7 +3,7 @@
 Scope: the owner's correction to issue #3 on 2026-11-07. A discovery index plus
 two enabled AI services was insufficient. The rollout target is the complete
 ready GEO category, including Gemini, rather than all country/vendor categories
-in the unrelated 2019-entry discovery index.
+in the mixed discovery index.
 
 ## Source and policy
 
@@ -92,3 +92,19 @@ artifacts and returned PASS for this technical full-GEO milestone. The verdict
 excludes authenticated application/device acceptance. Deployed source identity
 is `6ebfabd`; subsequent documentation/reference updates do not alter its runtime
 code or canonical private inputs.
+
+## User confirmation and real source update
+
+After the deployment the owner explicitly replied that Gemini works
+("Заработал"). This confirms the reported Gemini problem is resolved for the
+owner's use; it does not imply that all services, file flows or network switches
+were tested.
+
+The public Meta discovery collector also exercised a real changed-source path:
+[run 42346695609](https://github.com/Kwentin3/smart-dns/actions/runs/42346695609)
+created [PR #7](https://github.com/Kwentin3/smart-dns/pull/7). Its PR blob matched
+the downloaded candidate artifact, candidate contracts passed, the license was
+unchanged, and neither selected AI definition changed. The discovery index gained
+two entries and changed 137; the resulting index has 2021 entries. PR #7 was
+reviewed and merged. This updated discovery facts only, without changing private
+GEO approvals, accepted private source or live routing.

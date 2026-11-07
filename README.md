@@ -8,7 +8,8 @@
 завершился без изменений источника. На VPS дополнительно применён полный приватный
 GeoBlock + Google AI: 492 upstream suffixes, включая Gemini. Native status совпал
 с desired; 180 внешних wire checks прошли. [GEO evidence](docs/reports/2026-11-07/geoblock-profile.md).
-Полная приёмка функций приложений/смены сети ещё не завершена.
+Владелец подтвердил, что Gemini заработал. Полная приёмка прочих функций
+приложений/смены сети ещё не завершена.
 
 Изолированный пилот [issue #1](https://github.com/Kwentin3/smart-dns/issues/1):
 AdGuard Home → точные HostSNI rules Traefik → HAProxy → фиксированный public IPv4.
