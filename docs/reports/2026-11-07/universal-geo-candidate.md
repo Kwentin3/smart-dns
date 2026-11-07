@@ -198,6 +198,13 @@ allows merging this repository-only slice once these questions are recorded.
 They remain open release decisions, not authorization to deploy Fancy or increase
 the production budget. The currently accepted GEO profile stays active.
 
+During the documentation follow-up, [CI 42362186906](https://github.com/Kwentin3/smart-dns/actions/runs/42362186906)
+stopped because Fancy's head advanced to `c02a150c417a6b3c39636653dbcc52f0e5f1dfaa`.
+The selected definition, source index and license text were read back unchanged.
+The native fixture now fetches the originally reviewed immutable commits through
+the same verified loader. Normal product refresh still follows upstream; a moving
+branch is no longer substituted for the frozen candidate's preparation input.
+
 ### 1. Broad suffixes versus ordinary direct traffic
 
 A suffix routes its apex and descendants regardless of URL, account or whether

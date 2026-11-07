@@ -24,14 +24,23 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           umask 077
-          python3 tools/bootstrap_geoblock.py --out .local/native-baseline
-          python3 tools/bootstrap_geoblock.py --source russia-fancy-geo --base-catalog .local/native-baseline/rules/pilot.json --base-registry .local/native-baseline/rules/registry.json --out .local/native-candidate
           python3 - <<'PY'
           import json
           from pathlib import Path
-          for name, pin in [('native-baseline', 'eb64def4353f8e1b9cc483858021979a3481c76e'), ('native-candidate', '25e7b1912eca4b31d44906af0df10f00c85ab268')]:
-              source = json.loads((Path('.local') / name / 'rules/registry.json').read_text())['source']
-              assert source['commit'] == pin, 'Source moved: review the new candidate before native acceptance'
+          from tools.bootstrap_geoblock import prepare
+          from tools.registry import fetch_url, GEO_SOURCE_ID, FANCY_SOURCE_ID, SOURCE_REPOSITORIES
+          from tools.render import write_new
+          catalog = json.loads(Path('rules/pilot.json').read_text())
+          registry = json.loads(Path('rules/registry.json').read_text())
+          for name, source_id, pin in [('native-baseline', GEO_SOURCE_ID, 'eb64def4353f8e1b9cc483858021979a3481c76e'), ('native-candidate', FANCY_SOURCE_ID, '25e7b1912eca4b31d44906af0df10f00c85ab268')]:
+              endpoint = SOURCE_REPOSITORIES[source_id].replace('https://github.com/', 'https://api.github.com/repos/') + '/commits/'
+              # Reproduce the reviewed candidate; normal product refresh still follows upstream.
+              def frozen_fetch(url):
+                  return fetch_url(endpoint + pin if url == endpoint + 'main' else url)
+              artifacts = prepare(catalog, registry, source_id=source_id, fetch=frozen_fetch)
+              assert artifacts['rules/registry.json']['source']['commit'] == pin, 'Frozen source identity differs'
+              write_new(artifacts, Path('.local') / name)
+              catalog, registry = artifacts['rules/pilot.json'], artifacts['rules/registry.json']
           PY
       - name: Pull only the existing digest-pinned lab images
         run: |
