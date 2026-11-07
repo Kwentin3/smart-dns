@@ -1,0 +1,71 @@
+name: Native GEO candidate
+
+on:
+  pull_request:
+    paths:
+      - 'tools/**'
+      - 'rules/**'
+      - 'config/images.lock.json'
+      - '.github/workflows/native-geo.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Recreate the reviewed candidate privately from verified Git sources
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          umask 077
+          python3 tools/bootstrap_geoblock.py --out .local/native-baseline
+          python3 tools/bootstrap_geoblock.py --source russia-fancy-geo --base-catalog .local/native-baseline/rules/pilot.json --base-registry .local/native-baseline/rules/registry.json --out .local/native-candidate
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          for name, pin in [('native-baseline', 'eb64def4353f8e1b9cc483858021979a3481c76e'), ('native-candidate', '25e7b1912eca4b31d44906af0df10f00c85ab268')]:
+              source = json.loads((Path('.local') / name / 'rules/registry.json').read_text())['source']
+              assert source['commit'] == pin, 'Source moved: review the new candidate before native acceptance'
+          PY
+      - name: Pull only the existing digest-pinned lab images
+        run: |
+          python3 - <<'PY'
+          import json, subprocess
+          from pathlib import Path
+          for image in json.loads(Path('config/images.lock.json').read_text()).values():
+              assert '@sha256:' in image
+              subprocess.run(['docker', 'pull', image], check=True, timeout=90)
+          PY
+      - name: Exercise full native Docker-provider policy and clean owned resources
+        run: >-
+          python3 -m tools.native_lab.run
+          --policy .local/native-candidate/rules
+          --baseline .local/native-baseline/rules
+          --expected-policy-sha256 2e815b2927ecd1d292b2d6258a1a734b40ed577e8dd69da1b0d0ee52c92bc136
+          --out .local/native-evidence
+      - name: Fallback cleanup of this job's fixed fixture project
+        if: always()
+        run: |
+          if test -f .local/native-evidence/compose.lab.json; then
+            docker compose -p smart-dns-geo-native -f .local/native-evidence/compose.lab.json down --volumes --remove-orphans
+          fi
+          test -z "$(docker ps -aq --filter label=com.docker.compose.project=smart-dns-geo-native)"
+          test -z "$(docker network ls -q --filter label=com.docker.compose.project=smart-dns-geo-native)"
+      - name: Publish aggregate receipts only; complete source corpora remain private
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: native-geo-receipts
+          path: |
+            .local/native-evidence/inputs.json
+            .local/native-evidence/readback.json
+            .local/native-evidence/result.json
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 14
