@@ -11,6 +11,9 @@
 baseline: 2508 native rules, wire scope 114 exact + 1140 suffix roots, лимит 4096.
 Native status `matches`; 64 внешних DNS/TLS checks и 12 соседних маршрутов PASS.
 [Production evidence](docs/reports/2026-11-07/production-fancy-rollout.md).
+Затем штатно добавлен suffix `lemonfox.ai`, включая поддомены; обычный refresh
+сохранил запись. Текущий итог: 2510 native rules, 114 exact + 1141 suffix roots,
+status `matches`; [приёмка LemonFox и граница STT-проверки](docs/product-goal.md#lemonfox-суффикс-и-сохранность-после-обновления-2026-11-07).
 Владелец подтвердил, что Gemini заработал. Полная приёмка прочих функций
 приложений/смены сети ещё не завершена.
 
