@@ -59,6 +59,9 @@ def approved_rules(catalog):
             raise ValueError("service requires a name and an explicit boolean enabled flag")
         if not isinstance(service["reason"], str) or not service["reason"].strip():
             raise ValueError("service state requires an explanation")
+        kind = service.get("kind", "service")
+        if kind not in ("service", "group"):
+            raise ValueError("service kind must be service or group")
         domains, suffixes = service.get("domains", []), service.get("domain_suffixes", [])
         for values in (domains, suffixes):
             if not isinstance(values, list) or any(not isinstance(value, str) for value in values) or values != sorted(set(values)):
@@ -72,7 +75,7 @@ def approved_rules(catalog):
         if service["enabled"]:
             active.update(domains)
             active_suffixes.update(suffixes)
-        states.append({"id": service_id, "name": service["name"], "enabled": service["enabled"], "reason": service["reason"], "domains": domains, "discovery_source": service.get("source"), "source_path": service.get("source_path")})
+        states.append({"id": service_id, "name": service["name"], "kind": kind, "enabled": service["enabled"], "reason": service["reason"], "domains": domains, "discovery_source": service.get("source"), "source_path": service.get("source_path")})
         if "domain_suffixes" in service:
             states[-1]["domain_suffixes"] = suffixes
         for key in ("references", "upstream", "upstream_state"):
@@ -87,7 +90,35 @@ def approved_rules(catalog):
             raise ValueError("exclusions must reference catalog names or suffix descendants")
     if any(not isinstance(reason, str) or not reason.strip() for reason in excluded.values()):
         raise ValueError("each excluded domain requires an explanation")
-    projected = {"revision": catalog["revision"], "domains": sorted(active - set(excluded)), "excluded_zones": catalog["excluded_zones"], "service_states": states, "excluded_domains": excluded}
+    # Individual OFF overrides bulk group grants, but never withdraws a shared
+    # namespace needed by another enabled individual. Preserve that conservative
+    # overlap explicitly so the status owner can explain effective routing.
+    individual_domains, individual_suffixes = set(), set()
+    for state in states:
+        if state["kind"] == "service" and state["enabled"]:
+            individual_domains.update(state["domains"])
+            individual_suffixes.update(state.get("domain_suffixes", []))
+    excluded = dict(excluded)
+    off_zones = set()
+    for state in states:
+        if state["kind"] != "service" or state["enabled"]:
+            continue
+        shared_domains, shared_suffixes = [], []
+        for name in state["domains"]:
+            if name in individual_domains or any(name == root or name.endswith("." + root) for root in individual_suffixes):
+                shared_domains.append(name)
+            else:
+                excluded.setdefault(name, "Disabled service: " + state["id"])
+        for root in state.get("domain_suffixes", []):
+            if (any(name == root or name.endswith("." + root) for name in individual_domains) or
+                    any(name == root or name.endswith("." + root) or root.endswith("." + name) for name in individual_suffixes)):
+                shared_suffixes.append(root)
+            else:
+                off_zones.add(root)
+        if shared_domains or shared_suffixes:
+            state["shared_routing"] = {"domains": shared_domains, "domain_suffixes": shared_suffixes}
+    zones = sorted(set(catalog["excluded_zones"]) | off_zones) if off_zones else list(catalog["excluded_zones"])
+    projected = {"revision": catalog["revision"], "domains": sorted(active - set(excluded)), "excluded_zones": zones, "service_states": states, "excluded_domains": excluded}
     if any("domain_suffixes" in service for service in services):
         projected["domain_suffixes"] = sorted(active_suffixes)
     return projected
@@ -101,10 +132,11 @@ def compile_config(rules, settings, origins=None):
             raise ValueError("policy requires unique sorted exact names and suffix roots")
     own = [hostname(z) for z in settings["own_zones"]]
     doh_host = hostname(settings["doh_host"])
-    blocked = rules["excluded_zones"] + own + [doh_host]
+    protected = own + [doh_host]
+    blocked = rules["excluded_zones"] + protected
     for d in domains + suffixes:
         hostname(d)
-        if any(d == zone or d.endswith("." + zone) for zone in blocked):
+        if any(d == zone or d.endswith("." + zone) for zone in protected):
             raise ValueError("excluded or own domain")
     # An approved broad suffix can contain a narrower own/excluded zone. Keep
     # that zone native and direct in all three consumers rather than widening it.
@@ -116,10 +148,15 @@ def compile_config(rules, settings, origins=None):
     limit = settings.get("max_policy_entries", 2048)
     if type(limit) is not int or limit < 1 or len(domains) + len(suffixes) + len(zone_exceptions) + len(exact_exceptions) > limit:
         raise ValueError("policy exceeds its explicit pattern budget")
+    # Keep desired inputs and validate their full budget before filtering. An
+    # operator exclusion overrides source allows, including the same root.
+    desired_domains, desired_suffixes = domains, suffixes
+    domains = [name for name in domains if name not in rules.get("excluded_domains", {}) and
+               not any(name == root or name.endswith("." + root) for root in rules["excluded_zones"])]
+    suffixes = [name for name in suffixes if not any(name == root or name.endswith("." + root) for root in rules["excluded_zones"])]
     # AGH combines matching rewrite records: redundant exact/suffix positives
     # produce duplicate A answers. Project one minimal union in every consumer,
     # retaining the approved typed inputs separately from native wire patterns.
-    desired_domains, desired_suffixes = domains, suffixes
     suffixes = [root for root in suffixes if not any(root.endswith("." + parent) for parent in suffixes)]
     domains = [name for name in domains if not any(name == root or name.endswith("." + root) for root in suffixes)]
     wire_scope = {"domains": domains, "domain_suffixes": suffixes}
@@ -146,9 +183,9 @@ def compile_config(rules, settings, origins=None):
                for address in origin_dns):
             raise ValueError("origin DNS points to nonpublic, own ingress or provider infrastructure")
     else:
-        if set(origins) != set(domains):
+        if set(origins) != set(desired_domains):
             raise ValueError("origins must exactly cover the reviewed host set")
-        origins = {d: public_v4(origins[d]) for d in domains}
+        origins = {d: public_v4(origins[d]) for d in desired_domains}
         if any(ip in forbidden_ips for ip in origins.values()):
             raise ValueError("origin points to own ingress or provider infrastructure")
     ids = settings["client_ids"]
@@ -161,7 +198,7 @@ def compile_config(rules, settings, origins=None):
     if not re.fullmatch(r"\$2[aby]\$(?:0[4-9]|[12][0-9]|3[01])\$[./A-Za-z0-9]{53}", password_hash):
         raise ValueError("admin password must be a bcrypt hash")
     fingerprint_inputs = {"rules": rules, "origins": origins}
-    if "domain_suffixes" in rules or zone_exceptions or exact_exceptions:
+    if "domain_suffixes" in rules or zone_exceptions or exact_exceptions or domains != desired_domains or suffixes != desired_suffixes:
         fingerprint_inputs["policy_exclusions"] = {"domains": exact_exceptions, "domain_suffixes": zone_exceptions}
         fingerprint_inputs["wire_scope"] = wire_scope
     if dynamic_origin:
@@ -300,7 +337,7 @@ def compile_config(rules, settings, origins=None):
         services["relay"]["networks"] = ["default", "dns"]
         services["relay"]["ports"].append("127.0.0.1:1853:8853")
     artifacts = {"agh-conf/AdGuardHome.yaml": agh, "haproxy.cfg": "\n".join(hap) + "\n", "compose.lab.json": {"services": services, "networks": {"default": {}, "dns": {}}}, "snapshot.json": {"status": "candidate-not-applied", "sha256": fingerprint, "domains": desired_domains, "desired_services": rules.get("service_states", []), "excluded_domains": rules.get("excluded_domains", {}), "origins": origins, "images": IMAGES}}
-    if "domain_suffixes" in rules or zone_exceptions or exact_exceptions:
+    if "domain_suffixes" in rules or zone_exceptions or exact_exceptions or domains != desired_domains or suffixes != desired_suffixes:
         artifacts["snapshot.json"].update(domain_suffixes=desired_suffixes, wire_scope=wire_scope,
             policy_exclusions={"domains": exact_exceptions, "domain_suffixes": zone_exceptions})
     # AGH owns and rewrites its live YAML. Keep only this derived immutable

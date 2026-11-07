@@ -1,7 +1,13 @@
 """Service catalogue contracts; compiled candidates are not live deployment."""
 import copy
+import contextlib
+import io
+import json
+from pathlib import Path
 import re
+import tempfile
 import unittest
+from unittest.mock import patch
 
 from tools.render import approved_rules, compile_config
 
@@ -137,6 +143,36 @@ class CatalogTests(unittest.TestCase):
         self.catalog["services"][0]["domains"] = []
         with self.assertRaises(ValueError):
             approved_rules(self.catalog)
+
+    def test_manual_baseline_cli_show_and_enable_never_fetch_upstream(self):
+        from tools.catalog import main
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            policy, registry = root / "pilot.json", root / "registry.json"
+            catalog = copy.deepcopy(self.catalog)
+            catalog["services"][0]["enabled"] = False
+            policy.write_text(json.dumps(catalog), encoding="utf-8")
+            registry.write_text(json.dumps({"schema_version": 1, "index": {}, "definitions": {}}), encoding="utf-8")
+            registry_before, policy_before = registry.read_bytes(), policy.read_bytes()
+            def invoke(command, *extras):
+                output = io.StringIO()
+                args = ["catalog", command, "chatgpt", "--rules", str(policy), "--registry", str(registry), *extras]
+                with patch("sys.argv", args), contextlib.redirect_stdout(output):
+                    main()
+                return output.getvalue()
+            with patch("tools.catalog.fetch_snapshot", side_effect=AssertionError("manual baseline must not fetch")):
+                shown = json.loads(invoke("show"))
+                self.assertEqual(shown["service"], catalog["services"][0])
+                self.assertEqual(shown["status"], "desired-policy-only")
+                self.assertEqual(policy.read_bytes(), policy_before)
+                invoke("enable", "--reason", "Owner re-enabled frozen baseline")
+            saved = json.loads(policy.read_text(encoding="utf-8"))
+            self.assertTrue(saved["services"][0]["enabled"])
+            self.assertEqual(saved["services"][0]["domains"], catalog["services"][0]["domains"])
+            self.assertNotIn("upstream", saved["services"][0])
+            self.assertEqual(saved["revision"], catalog["revision"] + 1)
+            self.assertEqual(registry.read_bytes(), registry_before)
+            self.assertEqual(approved_rules(saved)["domains"], ["chatgpt.com", "claude.ai", "shared.assets.net"])
 
 
 if __name__ == "__main__":

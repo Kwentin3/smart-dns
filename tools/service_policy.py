@@ -188,13 +188,16 @@ def read_status(settings, catalog, *, project, management_base, admin_username, 
         findings.append("native-state-changed-during-status")
 
     def services(states):
-        return [{"id": state["id"], "enabled": state["enabled"],
+        return [{"id": state["id"], "name": state.get("name", state["id"]), "enabled": state["enabled"],
+                 "kind": state.get("kind", "service"), "reason": state.get("reason"),
+                 "shared_routing": state.get("shared_routing", {"domains": [], "domain_suffixes": []}),
                  "pending_scope": state.get("upstream_state", {}).get("pending_scope", []),
                  "partial": state.get("upstream_state", {}).get("partial", False)} for state in states]
 
     return {"status": "matches" if not findings else "drift", "scope": "service-policy-only",
             "desired_revision": catalog["revision"], "desired_generation": desired_manifest["sha256"],
             "actual_generation": manifest["sha256"], "actual_generation_source": "owned-relay-bind-mount",
+            "actual_directory": str(directory),
             "desired_services": services(desired_manifest["desired_services"]),
             "actual_services": services(manifest.get("desired_services", [])), "findings": sorted(set(findings))}
 

@@ -18,7 +18,8 @@ AdGuard Home → точные HostSNI rules Traefik → HAProxy → фиксир
 а сведения community-источника — [принятый snapshot](rules/registry.json).
 Вход, сообщения, CDN, файлы, повторные
 сессии и устройства целиком пока не приняты. Gemini уже включён в GEO-профиле;
-результат с реальной пользовательской сессией требуется подтвердить отдельно.
+владелец подтвердил работу пользовательской сессии. Полный прогон функций и
+перехода Wi-Fi → мобильная сеть пока отложен.
 [Историческая приёмка рефакторинга](docs/refactor.md).
 
 `rules/pilot.json` и Meta snapshot в Git остаются воспроизводимым публичным
@@ -36,6 +37,47 @@ AI-пилотом/discovery. Полные действующие GEO preferences
 не включают новые roots. Публичный Meta collector остаётся отдельным discovery.
 
 ## Устройство
+
+Для действующей установки есть один операторский вход:
+
+На VPS установлен shortcut `smart-dns`: например, `smart-dns status`.
+
+```sh
+python3 tools/product.py status
+python3 tools/product.py off chatgpt --reason 'Paused by owner'
+python3 tools/product.py on chatgpt --reason 'Enabled by owner'
+python3 tools/product.py add example --suffix example.org --reason 'Reviewed service'
+python3 tools/product.py exclude api.example.org --reason 'Keep this name direct'
+python3 tools/product.py include api.example.org --reason 'Restore routing'
+python3 tools/product.py refresh
+python3 tools/product.py rollback --to GENERATION
+```
+
+Пути к приватным inputs, releases и management задаются один раз в
+`/opt/smart-dns/.local/deployment.json`; [пример](config/deployment.example.json)
+не содержит секретов. `status` читает actual из native AGH и relay. Остальные
+команды готовят candidate и restore, вызывают существующий service-only operator
+и публикуют preferences после успешного readback. Клиенты и администратор остаются
+у AGH. Изменение состава fixed origins требует согласованной карты адресов;
+текущий production GEO использует native dynamic origins.
+
+OFF отдельного сервиса имеет приоритет над включённой группой. Домены, нужные
+другому включённому отдельному сервису, сохраняются и видны в `shared_routing`.
+OFF группы снимает её массовое разрешение, сохраняя отдельные включённые сервисы.
+`exclude`/`include` меняют явное исключение одного имени; `include` не отменяет OFF.
+
+Новые [product-refresh templates](config/product-refresh.service.in) запускают
+тот же `refresh` ежедневно: обновление известного источника проходит native
+apply/readback/restore, новые roots остаются pending; удаления и смена лицензии —
+на review. Ошибка источника сохраняет принятый snapshot и runtime. Полное
+предложение хранится приватно. Старые proposal-only templates остаются отдельным
+режимом; два таймера одновременно для одной политики не нужны.
+
+`tools/certificate_deploy.py` публикует уже выпущенную Certbot пару в существующий
+TLS-каталог после проверки цепочки, имён, ключа и срока. AGH подхватывает файлы без
+рестарта; hook проверяет выдаваемый fingerprint и восстанавливает прежнюю пару
+при сбое. Это deploy hook, а не DNS-проверка или выпуск сертификата. Автоматизация
+issuer пока требует доступа к DNS-панели либо делегирования ACME-проверки.
 
 Один [каталог предпочтений](rules/pilot.json) вместе с [registry snapshot](rules/registry.json)
 через `catalog_rules` и `tools/render.py` порождает DNS rules, Traefik labels и

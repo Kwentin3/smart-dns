@@ -39,6 +39,8 @@ def project_catalog(catalog, registry, validate_hostname):
         if repository != REPOSITORY and registry["source"].get("private_only") is not True:
             raise ValueError("GEO source snapshot must remain private")
         list_id = ref["list"]
+        if "kind" not in service:
+            service["kind"] = "group" if registry["index"][list_id].get("kind") in ("category", "group") else "service"
         definition = registry["definitions"][list_id]
         if definition["source_blob"] != registry["index"][list_id]["blob_sha"]:
             raise ValueError("selected definition does not match accepted registry index")
@@ -95,7 +97,8 @@ def configure(catalog, registry, list_id, enabled, reason, *, local_id=None, acc
         source_id = next((key for key, value in SOURCE_REPOSITORIES.items() if value == registry["source"]["repository"]), None)
         if source_id is None:
             raise ValueError("unsupported registry source")
-        service = {"id": identifier, "name": list_id, "domains": [], "enabled": False, "reason": reason,
+        kind = "group" if registry["index"][list_id].get("kind") in ("category", "group") else "service"
+        service = {"id": identifier, "name": list_id, "kind": kind, "domains": [], "enabled": False, "reason": reason,
             "upstream": {"source": source_id, "list": list_id, "approved_scope": {"exact": [], "suffix": []}}}
         result["services"].append(service)
         approve_scope = True
@@ -116,13 +119,14 @@ def configure(catalog, registry, list_id, enabled, reason, *, local_id=None, acc
 def write_json(path, value):
     """Working-tree edits become authoritative together only through a Git commit."""
     path = Path(path)
+    content = json.dumps(value, ensure_ascii=False, indent=2) + "\n"
     temporary = None
     try:
         with tempfile.NamedTemporaryFile("w", encoding="utf-8", newline="\n", dir=path.parent, delete=False) as stream:
             temporary = Path(stream.name)
-            json.dump(value, stream, ensure_ascii=False, indent=2)
-            stream.write("\n")
+            stream.write(content)
         temporary.replace(path)
+        return content.encode("utf-8")
     finally:
         if temporary is not None and temporary.exists():
             temporary.unlink()
@@ -156,6 +160,9 @@ def main():
     matching = next((s for s in catalog["services"] if s["id"] == args.service or s.get("upstream", {}).get("list") == args.service), None)
     upstream_id = matching.get("upstream", {}).get("list", args.service) if matching else args.service
     if args.command == "show":
+        if matching is not None and "upstream" not in matching:
+            print(json.dumps({"service": matching, "status": "desired-policy-only"}, ensure_ascii=False, indent=2))
+            return
         if upstream_id not in registry["index"]:
             parser.error("service list is not present in the accepted discovery index")
         preview = registry
@@ -167,7 +174,7 @@ def main():
         return
     enabled = args.command == "enable"
     updated_registry = registry
-    if enabled and upstream_id not in registry["definitions"]:
+    if enabled and (matching is None or "upstream" in matching) and upstream_id not in registry["definitions"]:
         updated_registry = fetch_snapshot(sorted(set(selected_lists(catalog)) | {upstream_id}), registry)
     updated = configure(catalog, updated_registry, args.service, enabled, args.reason,
         local_id=args.id, accept_partial=args.accept_literal_only, approve_scope=args.approve_source_scope)

@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "mode": "production",
+  "project": "smart-dns",
+  "settings": "settings.json",
+  "catalog": "policy/rules/pilot.json",
+  "registry": "policy/rules/registry.json",
+  "sources": "policy/rules/sources.json",
+  "admin_password_file": "admin-password",
+  "management_base": "http://127.0.0.1:13000",
+  "releases": "releases",
+  "receipts": "product-receipts",
+  "dot_cert_dir": "tls"
+}

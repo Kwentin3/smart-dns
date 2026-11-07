@@ -29,7 +29,7 @@ def catalog(two=False):
     return {"services": [{"id": value, "enabled": True, "upstream": {"source": "metacubex-sing", "list": value}} for value in values]}
 
 
-def upstream(pin=NEW):
+def upstream(pin=NEW, *, openai=None, license_text=LICENSE):
     old = pin == OLD
     root, geo, index = (value * 40 for value in ("cde" if old else "f12"))
     documents = {
@@ -40,6 +40,8 @@ def upstream(pin=NEW):
     if not old:
         documents["openai"] = {"version": 2, "rules": [{"domain_suffix": ["auth.openai.com", "openai.com"], "domain_regex": "^unsafe.example$"}]}
         documents["anthropic"] = {"version": 2, "rules": [{"domain_suffix": ["anthropic.com", "claude.ai"]}]}
+    if openai is not None:
+        documents["openai"] = openai
     bodies = {key: json.dumps(value) for key, value in documents.items()}
     tree = lambda entries: json.dumps({"tree": entries, "truncated": False})
     replies = {
@@ -48,8 +50,8 @@ def upstream(pin=NEW):
         API + "/git/trees/" + geo: tree([{"path": "geosite", "type": "tree", "sha": index}]),
         API + "/git/trees/" + index: tree([{"path": key + ".json", "type": "blob", "sha": blob(body), "size": len(body.encode())} for key, body in bodies.items()]),
         API + "/commits/master": json.dumps({"sha": MASTER, "commit": {"tree": {"sha": LICENSE_ROOT}}}),
-        API + "/git/trees/" + LICENSE_ROOT: tree([{"path": "LICENSE", "type": "blob", "sha": blob(LICENSE)}]),
-        RAW + "/" + MASTER + "/LICENSE": LICENSE,
+        API + "/git/trees/" + LICENSE_ROOT: tree([{"path": "LICENSE", "type": "blob", "sha": blob(license_text)}]),
+        RAW + "/" + MASTER + "/LICENSE": license_text,
     }
     replies.update({RAW + "/" + pin + "/geo/geosite/" + key + ".json": value for key, value in bodies.items()})
     return replies
@@ -85,6 +87,24 @@ class SourceProposalTests(unittest.TestCase):
         self.assertEqual(set(candidate["definitions"]), {"openai"})
         self.assertEqual(candidate["source"]["license_text"], LICENSE)
         self.assertEqual(self.previous, before)
+        self.assertTrue(result["review_required"])
+        self.assertIn("selected-rule-removal", result["review_reasons"])
+
+    def test_additions_are_proposals_but_removal_and_license_changes_require_review(self):
+        original = copy.deepcopy(self.previous)
+        additive = {"version": 2, "rules": [{"domain": ["auth.openai.com", "api.openai.com"],
+                                             "domain_suffix": ["openai.com", "new-root.example"]}]}
+        result = proposal(source(), self.previous, catalog(), fetch=upstream(openai=additive).__getitem__)
+        self.assertTrue(result["changed"])
+        self.assertFalse(result["review_required"])
+        self.assertEqual(result["review_reasons"], [])
+        self.assertEqual(result["selected_rule_changes"]["openai"]["suffix"]["added"], ["new-root.example"])
+        changed_license = LICENSE + "Additional upstream license notice\n"
+        licensed = proposal(source(), self.previous, catalog(),
+                            fetch=upstream(openai=additive, license_text=changed_license).__getitem__)
+        self.assertTrue(licensed["review_required"])
+        self.assertEqual(licensed["review_reasons"], ["license-change"])
+        self.assertEqual(self.previous, original)
 
     def test_wrong_source_owner_or_malformed_pin_is_rejected_before_network(self):
         for changes in ({"repository": "https://github.com/other/repository"}, {"license": "MIT"}, {"commit": "sing"}):
