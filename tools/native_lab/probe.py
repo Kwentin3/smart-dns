@@ -2,8 +2,14 @@
 import http.client
 import ipaddress
 import json
+import os
+import signal
 import socket
 import ssl
+import subprocess
+import sys
+import time
+import traceback
 
 from tools.probe import management_request, question, rejected_tls, tls_origin
 
@@ -121,3 +127,192 @@ def probe(out, docker, project):
                 "scope": "native policy only; product applications and production not checked"}
     (out / "readback.json").write_text(json.dumps(readback, indent=2) + "\n", encoding="utf-8")
     return {"status": "PASS", "checks": checks}
+
+
+def management_probe(out, docker, project):
+    """Exercise the existing product CLI against this task-owned native lab."""
+    from tools import product
+    from tools.render import ROOT, catalog_rules, compile_config
+
+    report = {"status": "FAIL", "operations": [], "checks": 0,
+              "scope": "native product CLI; production and user applications not checked"}
+    stage = "deployment"
+
+    def save_report():
+        (out / "management.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+
+    def owned(service):
+        identifiers = docker("ps", "-aq", "--filter", "label=com.docker.compose.project=" + project,
+                             "--filter", "label=com.docker.compose.service=" + service).stdout.split()
+        assert len(identifiers) == 1, "fixture service missing or ambiguous"
+        item = json.loads(docker("inspect", identifiers[0]).stdout)[0]
+        assert item["Config"]["Labels"]["com.docker.compose.project"] == project
+        assert item["Config"]["Labels"]["com.docker.compose.service"] == service
+        return item
+
+    try:
+        dns = owned("dns")
+        addresses = [network["IPAddress"] for network in dns["NetworkSettings"]["Networks"].values()
+                     if network["IPAddress"]]
+        assert len(addresses) == 1 and ipaddress.ip_address(addresses[0]).is_private
+        manifest = {"schema_version": 1, "mode": "lab", "project": project,
+                    "management_base": "http://" + addresses[0] + ":3000"}
+        paths = {"settings": "canonical/settings.json", "catalog": "canonical/rules/pilot.json",
+                 "registry": "canonical/rules/registry.json", "sources": "canonical/rules/sources.json",
+                 "admin_password_file": "admin-password", "releases": ".local/releases",
+                 "receipts": ".local/receipts", "dot_cert_dir": "tls"}
+        manifest.update({key: str((out / value).resolve()) for key, value in paths.items()})
+        manifest_path = out / "deployment.private.json"
+        manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+        deployment = product.load_deployment(manifest_path)
+        initial_inputs = product.read_inputs(deployment)
+        protected = {service: (owned(service)["Id"], owned(service)["State"]["StartedAt"])
+                     for service in ("dns", "edge", "existing-site")}
+        password = deployment["admin_password_file"].read_text(encoding="utf-8").strip()
+
+        def api(endpoint):
+            status, payload = management_request(deployment["management_base"], endpoint,
+                                                 initial_inputs["settings"]["admin_username"], password)
+            assert status == 200, "fixture management readback failed"
+            return json.loads(payload)
+
+        admission = api("/control/access/list")
+
+        def preserved():
+            for service, expected in protected.items():
+                item = owned(service)
+                assert (item["Id"], item["State"]["StartedAt"]) == expected, "protected fixture changed"
+            assert api("/control/access/list") == admission, "native admission changed"
+            report["protected_containers_preserved"] = True
+            report["admission_preserved"] = True
+            report["checks"] += 2
+
+        def parity():
+            inputs = product.read_inputs(deployment)
+            artifacts = compile_config(catalog_rules(inputs["catalog"], inputs["registry"]), inputs["settings"])
+            label = "traefik.tcp.routers.sd-relay.rule"
+            expected = artifacts["compose.lab.json"]["services"]["relay"]["labels"][label].replace("$$", "$")
+            assert owned("relay")["Config"]["Labels"][label] == expected, "product actual Docker label differs"
+            assert api("/control/filtering/status")["user_rules"] == artifacts["snapshot.json"]["service_rules"], "product native AGH rules differ"
+            report["checks"] += 2
+
+        def cli(*arguments, environment=None, expected_failure=False):
+            nonlocal stage
+            stage = arguments[0]
+            number = len(report["operations"])
+            stdout_path = out / ("management-" + str(number) + ".stdout.private.json")
+            stderr_path = out / ("management-" + str(number) + ".stderr.private.log")
+            with stdout_path.open("wb") as stdout, stderr_path.open("wb") as stderr:
+                child = subprocess.Popen([sys.executable, str(ROOT / "tools/product.py"),
+                                          "--deployment", str(manifest_path), *arguments],
+                                         stdout=stdout, stderr=stderr, start_new_session=True, env=environment)
+                try:
+                    result = child.wait(timeout=180)
+                except BaseException:
+                    # Let service_policy's signal handler finish its own rollback.
+                    try:
+                        os.killpg(child.pid, signal.SIGTERM)
+                    except ProcessLookupError:
+                        pass
+                    child.wait(timeout=70)
+                    raise
+            value = json.loads(stdout_path.read_text(encoding="utf-8"))
+            if expected_failure:
+                assert result != 0 and value["status"] == "failed"
+                assert value["error"] == "source refresh failed; accepted inputs and runtime unchanged", "outage did not reach source transport owner"
+            else:
+                assert result == 0, "native product CLI failed; inspect private stdout"
+                assert value["status"] == "matches", "native product CLI did not reach matches"
+            report["operations"].append({"operation": "source-outage" if expected_failure else arguments[0], "status": "PASS"})
+            preserved()
+            parity()
+            return value
+
+        settings = initial_inputs["settings"]
+        relay_ip = ipaddress.IPv4Address(settings["relay_ipv4"]).packed
+
+        def dns_answer(name):
+            wire = question(name)
+            status, answer = request(settings["doh_host"], "/dns-query/" + settings["client_ids"][0], wire)
+            assert status == 200 and len(answer) >= 12 and answer[:2] == wire[:2] and answer[2] & 128
+            assert answer[3] & 15 == 0 and int.from_bytes(answer[6:8], "big") > 0
+            return answer
+
+        def direct(name):
+            deadline = time.monotonic() + 15
+            while True:
+                try:
+                    answer = dns_answer(name)
+                    assert relay_ip not in answer[12:], "disabled name still rewritten"
+                    status, _ = request(name)
+                    assert status == 404, "Docker provider has not removed TCP selection"
+                    rejected_tls("127.0.0.1", 18444, name)
+                    report["checks"] += 3
+                    return
+                except (OSError, AssertionError, http.client.HTTPException):
+                    if time.monotonic() >= deadline:
+                        raise
+                    time.sleep(.25)
+
+        def restored(name):
+            deadline = time.monotonic() + 15
+            while True:
+                try:
+                    answer = dns_answer(name)
+                    assert answer[6:8] == b"\0\1" and answer[-4:] == relay_ip
+                    for port in (18443, 18444):
+                        tls_origin("127.0.0.1", port, name)
+                    report["checks"] += 3
+                    return
+                except (OSError, AssertionError):
+                    if time.monotonic() >= deadline:
+                        raise
+                    time.sleep(.25)
+
+        cli("status")
+        stage = "archive-initial"
+        product.prepare(deployment, initial_inputs, deployment["releases"] / "initial")
+        reason = "Disposable native product CLI acceptance"
+        cli("add", "lab-disable", "--suffix", "tailscale.com", "--reason", reason)
+        cli("off", "lab-disable", "--reason", reason)
+        stage = "off-direct-readback"
+        direct("tailscale.com")
+        cli("refresh")
+        stage = "off-refresh-direct-readback"
+        direct("tailscale.com")
+        canonical_before_outage = {key: deployment[key].read_bytes() for key in product.INPUT_NAMES
+                                   if key in deployment}
+        native_before_outage = api("/control/filtering/status")["user_rules"]
+        outage_environment = {**os.environ, "HTTPS_PROXY": "http://127.0.0.1:1",
+                              "https_proxy": "http://127.0.0.1:1", "NO_PROXY": "", "no_proxy": ""}
+        cli("refresh", environment=outage_environment, expected_failure=True)
+        stage = "source-outage-preservation-readback"
+        assert all(deployment[key].read_bytes() == value for key, value in canonical_before_outage.items())
+        assert api("/control/filtering/status")["user_rules"] == native_before_outage
+        direct("tailscale.com")
+        report["source_outage_preserved"] = True
+        report["checks"] += 2
+        cli("exclude", "openai.com", "--reason", reason)
+        stage = "exclude-direct-readback"
+        direct("openai.com")
+        cli("refresh")
+        stage = "exclude-refresh-direct-readback"
+        direct("openai.com")
+        cli("rollback", "--to", "initial")
+        stage = "rollback-canonical-readback"
+        assert product.read_inputs(deployment) == initial_inputs, "rollback did not restore original canonical policy"
+        parity()
+        restored("tailscale.com")
+        restored("openai.com")
+        preserved()
+        report["checks"] += 1
+        report["rollback_original_inputs_restored"] = True
+        report["status"] = "PASS"
+        save_report()
+        return report
+    except BaseException as error:
+        report["failure_stage"] = stage
+        report["failure_type"] = type(error).__name__
+        (out / "management-failure.private.log").write_text(traceback.format_exc(), encoding="utf-8")
+        save_report()
+        raise

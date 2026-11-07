@@ -13,7 +13,7 @@ PASSWORD_HASH = "$2b$10$kkngSiVN5gx/I5BfjB/TGOJmh1hd1rHbjZlw8R0EbBXsUnS721f56"
 def load_policy(directory):
     directory = Path(directory).resolve(strict=True)
     return {name: json.loads((directory / filename).read_text(encoding="utf-8"))
-            for name, filename in (("catalog", "pilot.json"), ("registry", "registry.json"))}
+            for name, filename in (("catalog", "pilot.json"), ("registry", "registry.json"), ("sources", "sources.json"))}
 
 
 def enforcement_scope(rules):
@@ -47,11 +47,7 @@ def prepare(out, policy, baseline, expected_policy_sha256):
     }
     artifacts = compile_config(rules, settings)
     compose = artifacts["compose.lab.json"]
-    # Keep generated Docker labels intact; constrain only this fixture's discovery.
-    command = compose["services"]["edge"]["command"]
-    command[:] = [argument if not argument.startswith("--providers.docker.constraints=") else
-                  "--providers.docker.constraints=Label(`smart-dns.lab`,`true`) && "
-                  "Label(`com.docker.compose.project`,`" + PROJECT + "`)" for argument in command]
+    # All infrastructure and labels remain compiler-owned, including later CLI generations.
     snapshot = artifacts["snapshot.json"]
     label = compose["services"]["relay"]["labels"]["traefik.tcp.routers.sd-relay.rule"]
     receipts = {
@@ -70,6 +66,11 @@ def prepare(out, policy, baseline, expected_policy_sha256):
         "scope": "reviewed policy through compiler, with disposable infrastructure settings",
         "application_functions": "not-checked", "production": "not-checked",
     }
-    artifacts.update({"fixture-settings.json": settings, "inputs.json": receipts})
+    artifacts.update({"fixture-settings.json": settings, "inputs.json": receipts,
+                      "canonical/settings.json": settings,
+                      "canonical/rules/pilot.json": inputs["catalog"],
+                      "canonical/rules/registry.json": inputs["registry"],
+                      "canonical/rules/sources.json": inputs["sources"],
+                      "admin-password": "lab-only-change-me\n"})
     write_new(artifacts, out)
     return compose

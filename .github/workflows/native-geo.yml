@@ -43,6 +43,8 @@ jobs:
               subprocess.run(['docker', 'pull', image], check=True, timeout=90)
           PY
       - name: Exercise full native Docker-provider policy and clean owned resources
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: >-
           python3 -m tools.native_lab.run
           --policy .local/native-candidate/rules
@@ -65,6 +67,7 @@ jobs:
           path: |
             .local/native-evidence/inputs.json
             .local/native-evidence/readback.json
+            .local/native-evidence/management.json
             .local/native-evidence/result.json
           include-hidden-files: true
           if-no-files-found: warn

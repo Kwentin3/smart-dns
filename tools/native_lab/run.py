@@ -30,7 +30,7 @@ def identities():
 
 def main():
     from .prepare import prepare
-    from .probe import probe, request
+    from .probe import management_probe, probe, request
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--policy", type=Path, required=True)
@@ -53,6 +53,8 @@ def main():
         raise RuntimeError("fixture project occupied; do not reuse")
     if docker("network", "ls", "-q", "--filter", selector).stdout.strip():
         raise RuntimeError("fixture networks already exist; inspect before retry")
+    if docker("ps", "-aq", "--filter", "label=smart-dns.lab=true").stdout.strip():
+        raise RuntimeError("another native lab is present; refuse shared Docker-provider discovery")
     reservations = []
     try:
         for port in (18443, 18444):
@@ -119,6 +121,8 @@ def main():
         report["images"] = {"status": "PASS", "locked_running_services": len(containers)}
         stage = "native-wire-and-rule-readback"
         report["probes"] = probe(args.out, docker, PROJECT)
+        stage = "native-product-management"
+        report["management"] = management_probe(args.out, docker, PROJECT)
         report["status"] = "PASS"
     except BaseException as error:
         (args.out / "failure.private.log").write_text(traceback.format_exc(), encoding="utf-8")
