@@ -38,23 +38,25 @@ def differences(before, after):
 
 
 def proposal(source_document, previous, catalog, fetch=fetch_text):
-    sources = [item for item in source_document["sources"] if item.get("repository") == registry.REPOSITORY]
-    if len(sources) != 1 or sources[0].get("id") != SOURCE_ID or sources[0].get("license") != "GPL-3.0":
-        raise ValueError("one declared GPL-3.0 Meta service registry source is required")
+    repository = previous.get("source", {}).get("repository", registry.REPOSITORY)
+    source_id = next((key for key, value in registry.SOURCE_REPOSITORIES.items() if value == repository), None)
+    sources = [item for item in source_document["sources"] if item.get("id") == source_id]
+    if source_id is None or len(sources) != 1 or sources[0].get("repository") != repository:
+        raise ValueError("one declared supported registry source is required")
+    if source_id == SOURCE_ID and sources[0].get("license") != "GPL-3.0":
+        raise ValueError("Meta registry license requires review")
     if not isinstance(sources[0].get("commit"), str) or re.fullmatch(r"[0-9a-f]{40}", sources[0]["commit"]) is None:
         raise ValueError("declared registry source requires an immutable 40-hex commit")
-    if previous and previous.get("source", {}).get("repository") != registry.REPOSITORY:
-        raise ValueError("accepted registry belongs to a different source")
     selected = []
     for service in catalog["services"]:
         upstream = service.get("upstream")
         if upstream is not None:
-            if upstream["source"] != SOURCE_ID:
+            if upstream["source"] != source_id:
                 raise ValueError("catalog refers to an unsupported registry source")
             selected.append(upstream["list"])
     selected = sorted(set(selected))
-    candidate = registry.fetch_snapshot(selected, previous=previous, fetch=fetch)
-    if candidate["source"]["license"] != "GPL-3.0":
+    candidate = registry.fetch_snapshot(selected, previous=previous, fetch=fetch, source_id=source_id)
+    if source_id == SOURCE_ID and candidate["source"]["license"] != "GPL-3.0":
         raise ValueError("registry license requires manual review")
     old_index, new_index = previous.get("index", {}), candidate["index"]
     old_definitions = previous.get("definitions", {})
@@ -78,7 +80,7 @@ def proposal(source_document, previous, catalog, fetch=fetch_text):
             "changed": previous != candidate, "candidate_registry": candidate}
 
 
-def produce(sources_path, output_path, fetch=fetch_text, *, registry_path=None, catalog_path=None):
+def produce(sources_path, output_path, fetch=fetch_text, *, registry_path=None, catalog_path=None, public_artifact=False):
     sources_path, output_path = Path(sources_path).resolve(), Path(output_path).resolve()
     root = sources_path.parent.parent
     artifact_root = (root / ".local/source-proposals").resolve()
@@ -86,8 +88,10 @@ def produce(sources_path, output_path, fetch=fetch_text, *, registry_path=None, 
         raise ValueError("proposal output must stay under .local/source-proposals")
     registry_path = Path(registry_path) if registry_path is not None else root / "rules/registry.json"
     catalog_path = Path(catalog_path) if catalog_path is not None else root / "rules/pilot.json"
-    result = proposal(json.loads(sources_path.read_text(encoding="utf-8")),
-                      json.loads(registry_path.read_text(encoding="utf-8")),
+    previous = json.loads(registry_path.read_text(encoding="utf-8"))
+    if public_artifact and previous.get("source", {}).get("repository") != registry.REPOSITORY:
+        raise ValueError("private GEO snapshots cannot be published as public artifacts")
+    result = proposal(json.loads(sources_path.read_text(encoding="utf-8")), previous,
                       json.loads(catalog_path.read_text(encoding="utf-8")), fetch)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     # One atomic owner contains both the proposal and its exact candidate.
@@ -104,9 +108,10 @@ def main():
     parser.add_argument("--registry", type=Path, default=ROOT / "rules/registry.json")
     parser.add_argument("--catalog", type=Path, default=ROOT / "rules/pilot.json")
     parser.add_argument("--out", type=Path, default=ROOT / ".local/source-proposals/latest.json")
+    parser.add_argument("--public-artifact", action="store_true", help="Reject private-only source profiles before fetching")
     args = parser.parse_args()
     try:
-        result = produce(args.sources, args.out, registry_path=args.registry, catalog_path=args.catalog)
+        result = produce(args.sources, args.out, registry_path=args.registry, catalog_path=args.catalog, public_artifact=args.public_artifact)
     except (OSError, ValueError, KeyError, TypeError):
         parser.exit(1, "Registry proposal failed; accepted registry/preferences/runtime remain unchanged.\n")
     print("Registry proposal saved; changed=" + str(result["changed"]).lower() + "; no accepted or runtime state changed")

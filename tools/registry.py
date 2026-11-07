@@ -16,6 +16,11 @@ REPOSITORY = "https://github.com/MetaCubeX/meta-rules-dat"
 API = "https://api.github.com/repos/MetaCubeX/meta-rules-dat"
 RAW = "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat"
 BRANCH = "sing"
+GEO_SOURCE_ID = "itdog-geoblock"
+SOURCE_REPOSITORIES = {
+    "metacubex-sing": REPOSITORY,
+    GEO_SOURCE_ID: "https://github.com/itdoginfo/allow-domains",
+}
 API_LIMIT, RAW_LIMIT, MAX_SELECTED = 2 * 1024 * 1024, 1024 * 1024, 64
 
 
@@ -104,7 +109,7 @@ def normalize_rules(document):
     return {"exact": sorted(exact), "suffix": sorted(suffix), "unsupported": unsupported, "partial": bool(unsupported)}
 
 
-def fetch_snapshot(selected, previous=None, fetch=fetch_url):
+def fetch_snapshot(selected, previous=None, fetch=fetch_url, *, source_id=None):
     """Return a complete discovery index with bodies for selected services only.
 
     ``fetch`` accepts one URL and returns bytes or UTF-8 text. Previously selected
@@ -113,6 +118,18 @@ def fetch_snapshot(selected, previous=None, fetch=fetch_url):
     """
     if not isinstance(selected, list) or len(selected) > MAX_SELECTED or any(not isinstance(item, str) for item in selected) or len(selected) != len(set(selected)):
         raise RegistryError("select at most 64 unique registry IDs")
+    previous_repository = (previous or {}).get("source", {}).get("repository")
+    if source_id is None:
+        source_id = next((key for key, value in SOURCE_REPOSITORIES.items() if value == previous_repository), None) if previous_repository else "metacubex-sing"
+    if not isinstance(source_id, str) or source_id not in SOURCE_REPOSITORIES:
+        raise RegistryError("unknown registry source")
+    repository = SOURCE_REPOSITORIES[source_id]
+    if previous_repository and previous_repository != repository:
+        raise RegistryError("previous snapshot belongs to a different registry source")
+    is_geo = source_id == GEO_SOURCE_ID
+    api_base = "https://api.github.com/repos/" + repository.removeprefix("https://github.com/")
+    raw_base = "https://raw.githubusercontent.com/" + repository.removeprefix("https://github.com/")
+    branch = "main" if is_geo else BRANCH
 
     def raw(url, limit):
         try:
@@ -133,7 +150,7 @@ def fetch_snapshot(selected, previous=None, fetch=fetch_url):
 
     def api(path):
         try:
-            value = json.loads(raw(API + path, API_LIMIT))
+            value = json.loads(raw(api_base + path, API_LIMIT))
         except (json.JSONDecodeError, UnicodeError):
             raise RegistryError("registry API returned invalid JSON") from None
         if not isinstance(value, dict):
@@ -153,18 +170,27 @@ def fetch_snapshot(selected, previous=None, fetch=fetch_url):
         return _sha(found[0]["sha"])
 
     def blob(pin, path, expected):
-        data = raw(RAW + "/" + _sha(pin) + "/" + urllib.parse.quote(path, safe="/"), RAW_LIMIT)
+        data = raw(raw_base + "/" + _sha(pin) + "/" + urllib.parse.quote(path, safe="/"), RAW_LIMIT)
         actual = hashlib.sha1(b"blob " + str(len(data)).encode() + b"\0" + data).hexdigest()
         if actual != _sha(expected):
             raise RegistryError("registry blob differs from pinned Git tree")
         return data.decode("utf-8")
 
-    commit = api("/commits/" + BRANCH)
+    commit = api("/commits/" + branch)
     pin = _sha(commit["sha"])
     root = tree(commit["commit"]["tree"]["sha"])
-    geo = tree(child(root, "geo", "tree"))
-    index_tree = child(geo, "geosite", "tree")
-    entries = tree(index_tree)
+    if is_geo:
+        index_tree = _sha(commit["commit"]["tree"]["sha"])
+        entries = []
+        for service_id, directory, filename in (("geoblock", "Categories", "geoblock.lst"), ("google-ai", "Services", "google_ai.lst")):
+            listing = tree(child(root, directory, "tree"))
+            sha = child(listing, filename, "blob")
+            item = next(item for item in listing if item.get("path") == filename and item.get("type") == "blob")
+            entries.append({**item, "path": service_id + ".json", "sha": sha, "source_path": directory + "/" + filename})
+    else:
+        geo = tree(child(root, "geo", "tree"))
+        index_tree = child(geo, "geosite", "tree")
+        entries = tree(index_tree)
     index = {}
     for item in entries:
         name = item.get("path", "")
@@ -177,16 +203,16 @@ def fetch_snapshot(selected, previous=None, fetch=fetch_url):
         if not isinstance(size, int) or size < 0:
             raise RegistryError("registry blob size is missing or invalid")
         kind = "attribute" if "@" in service_id else "category" if service_id.startswith("category-") else "group" if service_id.startswith(("geolocation-", "geoip-")) or service_id in ("cn", "private", "gfw", "tld-cn", "tld-!cn") else "service-candidate"
-        index[service_id] = {"path": "geo/geosite/" + name, "blob_sha": _sha(item["sha"]), "size": size, "kind": kind}
+        index[service_id] = {"path": item["source_path"] if is_geo else "geo/geosite/" + name, "blob_sha": _sha(item["sha"]), "size": size, "kind": "category" if is_geo else kind}
     if any(item not in index for item in selected):
         raise RegistryError("selected registry ID missing upstream; accepted snapshot must be retained")
     license_pin, license_root = pin, root
-    if not any(item.get("path") == "LICENSE" and item.get("type") == "blob" for item in root):
+    if not is_geo and not any(item.get("path") == "LICENSE" and item.get("type") == "blob" for item in root):
         master = api("/commits/master")
         license_pin = _sha(master["sha"])
         license_root = tree(master["commit"]["tree"]["sha"])
-    license_text = blob(license_pin, "LICENSE", child(license_root, "LICENSE", "blob"))
-    license_name = "GPL-3.0" if "GNU GENERAL PUBLIC LICENSE" in license_text and "Version 3" in license_text else "UNKNOWN"
+    license_text = None if is_geo else blob(license_pin, "LICENSE", child(license_root, "LICENSE", "blob"))
+    license_name = None if is_geo else "GPL-3.0" if "GNU GENERAL PUBLIC LICENSE" in license_text and "Version 3" in license_text else "UNKNOWN"
     definitions = {}
     old = (previous or {}).get("definitions", {})
     for service_id in selected:
@@ -198,13 +224,22 @@ def fetch_snapshot(selected, previous=None, fetch=fetch_url):
         cached_bytes = cached_raw.encode("utf-8") if isinstance(cached_raw, str) else b""
         cached_hash = hashlib.sha1(b"blob " + str(len(cached_bytes)).encode() + b"\0" + cached_bytes).hexdigest()
         body = cached_raw if cached_hash == entry["blob_sha"] else blob(pin, entry["path"], entry["blob_sha"])
-        try:
-            definition = normalize_rules(json.loads(body))
-        except json.JSONDecodeError:
-            raise RegistryError("selected registry definition is invalid JSON") from None
+        if is_geo:
+            names = [line.split("#", 1)[0].strip() for line in body.splitlines()]
+            if any(name and not _literal(name) for name in names):
+                raise RegistryError("GeoBlock list contains an invalid literal hostname")
+            definition = {"exact": [], "suffix": sorted(set(filter(None, names))), "unsupported": [], "partial": False}
+        else:
+            try:
+                definition = normalize_rules(json.loads(body))
+            except json.JSONDecodeError:
+                raise RegistryError("selected registry definition is invalid JSON") from None
         definition.update(source_blob=entry["blob_sha"], sha256=hashlib.sha256(body.encode("utf-8")).hexdigest(), raw=body)
         definitions[service_id] = definition
-    return {"schema_version": 1, "source": {"repository": REPOSITORY, "branch": BRANCH, "commit": pin,
+    source = {"repository": repository, "branch": branch, "commit": pin,
             "index_tree": index_tree, "license": license_name, "license_commit": license_pin,
-            "license_reference": REPOSITORY + "/blob/" + license_pin + "/LICENSE", "license_text": license_text},
+            "license_reference": None if is_geo else repository + "/blob/" + license_pin + "/LICENSE", "license_text": license_text}
+    if is_geo:
+        source.update(private_only=True, license_note="No license grant established; fetched corpus is private-only and must not be publicly redistributed.")
+    return {"schema_version": 1, "source": source,
             "index": dict(sorted(index.items())), "definitions": definitions}
