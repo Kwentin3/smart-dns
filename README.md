@@ -6,9 +6,11 @@
 развёрнут с отдельным разрешением владельца; [техническая приёмка production](docs/reports/2026-11-06/production-pilot.md)
 завершена. Готовый community-каталог и ежедневный сбор обновлений доставлены в
 `main`; [первый запуск](https://github.com/Kwentin3/smart-dns/actions/runs/42276996672)
-завершился без изменений источника. На VPS дополнительно применён полный приватный
-GeoBlock + Google AI: 492 upstream suffixes, включая Gemini. Native status совпал
-с desired; 180 внешних wire checks прошли. [GEO evidence](docs/reports/2026-11-07/geoblock-profile.md).
+завершился без изменений источника. По [допуску #14](https://github.com/Kwentin3/smart-dns/issues/14)
+на VPS применён полный приватный Fancy GEO с сохранением прежнего GeoBlock/AI
+baseline: 2508 native rules, wire scope 114 exact + 1140 suffix roots, лимит 4096.
+Native status `matches`; 64 внешних DNS/TLS checks и 12 соседних маршрутов PASS.
+[Production evidence](docs/reports/2026-11-07/production-fancy-rollout.md).
 Владелец подтвердил, что Gemini заработал. Полная приёмка прочих функций
 приложений/смены сети ещё не завершена.
 
@@ -25,15 +27,15 @@ AdGuard Home → точные HostSNI rules Traefik → HAProxy → фиксир
 
 `rules/pilot.json` и Meta snapshot в Git остаются воспроизводимым публичным
 AI-пилотом/discovery. Полные действующие GEO preferences/snapshot находятся в
-приватных `.local/policy/rules/` на VPS: у GEO-источника не объявлена лицензия на
-перепубликацию. Status/apply для этой установки получают явные private `--rules`
+приватных `.local/policy/rules/` на VPS: MIT у Fancy не устанавливает разрешения
+на перепубликацию всех агрегированных сторонних списков. Status/apply для этой установки получают явные private `--rules`
 и `--registry`; локальный `catalog list` без них показывает публичный пример,
 а не удалённый runtime. Клиентами по-прежнему управляет native AdGuard Home.
 
 Полный профиль готовит `python3 tools/bootstrap_geoblock.py`: два готовых списка
 из одного pinned Git source, строгие suffix literals, прежний принятый AI-набор
 сохранён. По умолчанию output — приватная `.local/geoblock-policy`, без запуска
-сервисов и изменения DNS. Новые native systemd templates собирают только приватные
+сервисов и изменения DNS. Исторические `geoblock-proposals` templates собирают только приватные
 предложения, ежедневно 06:31 UTC с задержкой до пяти минут; не выполняют deploy и
 не включают новые roots. Публичный Meta collector остаётся отдельным discovery.
 
@@ -56,15 +58,16 @@ python3 tools/product.py refresh
 python3 tools/product.py rollback --to GENERATION
 ```
 
-`list` и `show ID` в текущем кандидате читают discovery и desired policy из
+`list` и `show ID` читают discovery и desired policy из
 deployment manifest без сети и admin password. Показывают ON/OFF/discovered,
 source/commit, ограничения и исключения. Они явно не подтверждают runtime,
 сетевой путь или функции приложения; для native actual используется `status`.
-Новые команды требуют установки этого кандидата; их наличие на VPS не заявлено.
+Установленный shortcut использует проверенный source PR #13.
 
-Для #12 подготовлен приватный расширенный source profile `russia-fancy-geo`:
-готовый смешанный exact/suffix JSON, прежний baseline сохранён. Новый профиль
-на VPS не применён; [исследование, кандидат и обязательный остаток](docs/reports/2026-11-07/universal-geo-candidate.md).
+Для действующего source profile `russia-fancy-geo` используется готовый смешанный
+exact/suffix JSON; прежний baseline сохранён как frozen local policy. Существующий
+product refresh обновляет Fancy, клиенты/admin остаются у AGH. [Исследование и
+границы источника](docs/reports/2026-11-07/universal-geo-candidate.md).
 
 Пути к приватным inputs, releases и management задаются один раз в
 `/opt/smart-dns/.local/deployment.json`; [пример](config/deployment.example.json)
