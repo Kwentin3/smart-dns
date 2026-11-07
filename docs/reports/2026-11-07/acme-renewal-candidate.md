@@ -1,6 +1,7 @@
 # Автопродление: проверенный кандидат для VK WorkSpace
 
-Статус: source/lab READY; production НЕ РАЗВЁРНУТ. Это следующий срез существующего
+Статус: source/lab READY; native authoritative служба развёрнута с отдельным
+разрешением владельца. DNS delegation и unattended renewal пока НЕ ПРИНЯТЫ. Это срез существующего
 [GOAL](../../product-goal.md), а не подтверждение завершения продукта.
 
 Владелец подтвердил DNS-панель VK WorkSpace / biz.mail.ru. Официальная
@@ -107,13 +108,45 @@ Runtime limits сервера 64 MiB/10%/32 tasks; native RSS около 2.8 MiB
 Первый прогон выявил реальную ошибку: advertised `loglevel=warning` не принимается
 v2.0.2; выбран `error`, повтор пройден. Вторая ошибка была в fixture IP allocation
 при recreate; fixture теперь использует native restart с прежним адресом.
-Private receipts: `.local/cert-renewal/evidence/`, frozen archive и binary hashes
-сохранены локально. Публичная делегация, actual systemd service и staging CA пока
-не проверены: они требуют production-внедрения и DNS-записей владельца.
+Private lab receipts: `.local/cert-renewal/evidence/`, frozen archive и binary
+hashes сохранены локально. Публичная делегация и staging CA пока требуют
+DNS-записей владельца.
 
 ## Почему требуется конкретное согласование
 
 Кандидат добавляет отдельную authoritative службу и публичный UDP/TCP 53.
 Прежнее согласование действующего deployment не включало это расширение.
-Конфигурация и lab evidence готовы к ревью; до разрешения новая служба на VPS
-не запускается. Прежний сертификат и работающий Smart DNS сохраняются.
+После source/lab review владелец отдельно разрешил конкретное внедрение.
+
+## Production deployment
+
+Установлен источник `40795ba321e029a1c01ee5d1c9f5a3e21ebbc267`: native binaries
+сверены с lock, приватный config получен из проверенного шаблона. Фактический
+systemd 247 принял unit, служба active/enabled, DynamicUser/NoNewPrivileges=yes,
+MemoryMax=64 MiB, CPUQuota=10%, TasksMax=32. MemoryCurrent около 2.4 MiB.
+DNS слушает только назначенный public IPv4:53 UDP/TCP, API — 127.0.0.1:15380.
+
+Native registration завершена, credentials 0600/0700, затем registration закрыта
+с проверкой отказа. Согласованная cold backup native state/client account и
+прежней renewal config/TLS находится только на VPS. Два native auth hook update
+успешны. Внешний probe: шесть PASS по UDP/TCP — NS, оба TXT, отсутствие рекурсии.
+Публичное подключение к API отвергнуто; bind дополнительно подтверждён на хосте.
+
+Все Docker ID/StartedAt сохранены; действующая service policy — `matches`.
+Shared Traefik, AGH, relay и renewal config не менялись, issuance не запускался.
+Владельцу выданы точные A/NS/CNAME для однократной настройки в VK WorkSpace.
+Private safe receipts: `.local/cert-renewal/production/`; credentials/backup keys
+с VPS в эти локальные receipts не копировались.
+
+Первая установка остановилась до запуска: строгий umask создал новые каталоги
+0700; ошибка была в private installer, не в reviewed unit. Task-owned prestart
+файлы сверены и удалены, для новых публично читаемых binary/config каталогов
+явно выставлены 0755, повторный запуск успешен. Прежний runtime не затронут.
+
+Остаток этого среза: authoritative/recursive readback делегации, Certbot staging,
+сохранение authenticator в прежней lineage, actual renewal/deploy hook и внешний
+DoT fingerprint. Только после этих проверок автопродление можно считать готовым.
+SAN действующей lineage и поддержка точных CLI flags сверены с установленным
+Certbot 1.12.0. Его фактический hooks.py прекращает deploy hook при dry-run;
+staging-сертификат не публикуется в AGH. Пробный выпуск пока не запускался:
+публичные A/NS/CNAME ещё не видны при контрольном запросе.

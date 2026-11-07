@@ -23,9 +23,11 @@
 - [ ] Завершить автоматическое продление DoT-сертификата. Публикация без рестарта
   AGH уже проверена, deploy hook установлен. Владелец подтвердил VK WorkSpace /
   biz.mail.ru. В публичной документации ENS DNS-write API не подтверждён.
-  Подготовлен и проверен native ACME delegation candidate; новая публичная
-  authoritative служба UDP/TCP 53 пока не развёрнута и требует отдельного
-  согласования расширения production. [Кандидат](reports/2026-11-07/acme-renewal-candidate.md).
+  Native ACME delegation согласован владельцем и развёрнут: служба systemd
+  active/enabled, API loopback-only, registration закрыта. Внешние UDP/TCP DNS,
+  два TXT, NS и отсутствие рекурсии подтверждены. Владельцу выданы три точные
+  DNS-записи; ожидается их добавление перед staging и actual renewal.
+  [Проверенный этап](reports/2026-11-07/acme-renewal-candidate.md).
 - [x] Проверить команды и изменения политики в изолированной лаборатории, затем
   применить проверенный артефакт без изменения общего edge и чужих сервисов.
 - [ ] Получить полную пользовательскую приёмку Wi-Fi → мобильная сеть, сообщения,
@@ -38,8 +40,8 @@
 Windows/Linux, native GEO/CLI/certificate проверки и CI, применён на VPS; actual
 совпадает с desired. Все четыре группы ON, native rules и защищаемые контейнеры
 сохранены. Новый systemd refresh выполнен успешно, прежний timer выключен.
-Следующий шаг — согласовать подготовленную ACME-службу, затем добавить разовую
-DNS-делегацию и проверить Certbot staging/renewal с сохранённым authenticator.
+Следующий шаг — проверить добавленную владельцем DNS-делегацию и выполнить
+Certbot staging/renewal с сохранённым authenticator.
 [Evidence](reports/2026-11-07/product-controls.md).
 
 ## Расширение GEO-профиля, 2026-11-07
