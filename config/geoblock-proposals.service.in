@@ -1,0 +1,14 @@
+[Unit]
+Description=Collect private Smart DNS GEO source proposals
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+UMask=0077
+ExecStart=/usr/bin/python3 @SOURCE_ROOT@/tools/source_proposals.py --sources @POLICY_ROOT@/rules/sources.json --registry @POLICY_ROOT@/rules/registry.json --catalog @POLICY_ROOT@/rules/pilot.json --out @POLICY_ROOT@/.local/source-proposals/latest.json
+TimeoutStartSec=120
+MemoryMax=128M
+CPUQuota=25%
+TasksMax=32
+NoNewPrivileges=true

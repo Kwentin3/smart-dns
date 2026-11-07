@@ -32,7 +32,7 @@ jobs:
       - name: Collect pinned broad index and selected native JSON definitions
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: python3 tools/source_proposals.py
+        run: python3 tools/source_proposals.py --public-artifact
       - name: Upload atomic proposal with candidate registry and license attribution
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:

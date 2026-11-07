@@ -4,7 +4,42 @@
 Это текущая запись продуктовой задачи; [рефакторинг](refactor.md) остаётся
 завершённым инфраструктурным этапом. Product GOAL **не завершён**.
 
-Текущий технический результат: готовый index 2019 source lists, выбранные definitions,
+## Расширение GEO-профиля, 2026-11-07
+
+Владелец указал на продуктовый пробел: широкий каталог был доставлен, но работали
+только два AI-сервиса; Gemini оставался OFF. Новый запрос — раскатать полный
+готовый GEO-набор. Прежний узкий пилот не является конечным объёмом задачи и не
+требует отдельного согласования каждого ресурса внутри выбранного набора.
+
+Выбран полный профиль itdog GeoBlock + Google AI: 465 и 28 суффиксов,
+492 уникальных, pin `eb64def4353f8e1b9cc483858021979a3481c76e`. Это специальный
+GEO-корпус, а не смешанный индекс из стран/вендоров/категорий Meta. У источника
+нет объявленной лицензии: полные snapshots/каталог/предложения остаются приватными;
+в Git — код адаптера, provenance и результаты без полного набора.
+
+Границы прежние: существующий collector → private snapshot → обычная catalog
+projection → native compiler → service-only apply/readback/rollback. Старый
+принятый AI-набор сохраняется как локальная baseline. Никаких новых DNS/proxy,
+панелей, БД, изменений общего edge или Hermes. Native timer собирает приватные
+предложения отдельно от публичного Meta discovery; автоматического расширения
+approved roots и unattended deploy нет. Последний рабочий набор сохраняется при
+ошибке источника. Собственные зоны/адреса и destination-IP guards сохраняются.
+
+Готовность этого среза: реальный профиль целиком прошёл native lab и transport
+полного Docker label; применён на VPS, actual status совпадает с desired,
+Gemini/API и выборка других GEO-ресурсов дают правильные DoH/DoT и origin TLS,
+обычные сайты остаются direct; приватный source timer выполнен/активен. Google
+может дополнительно проверять аккаунт и собственную геолокацию VPS — DNS/TLS не
+доказывают работу залогиненного Gemini. Приватный кандидат прошёл 101 unit test,
+53 native GEO checks и проверку systemd templates. Оператор `6ebfabd` применил
+профиль на production: actual status `matches`, admission/protected containers
+сохранены, все четыре service groups ON. Снаружи прошли 180 DoH/DoT/origin checks;
+анонимные Gemini `/app` и `/` отвечают HTTP 200. Private timer активен, первое
+native выполнение завершилось Result=success/exit0 и `changed=false`. Канонические
+GEO inputs — private `.local/policy/rules/`, public Meta в Git — discovery/example.
+[Evidence](reports/2026-11-07/geoblock-profile.md).
+
+До GEO-расширения: готовый index 2019 source lists, выбранные definitions,
 8 reviewed namespaces ChatGPT/Claude на production, actual status `matches` и 96
 внешних DoH/DoT/origin-TLS checks. Новые roots/unsupported predicates остаются на
 review. Ежедневный workflow доставлен в `main`, включён и фактически запущен;
@@ -337,8 +372,11 @@ commit и accepted/candidate checksums совпадают. PR-публикаци
 первый реальный changed-source PR и будущий scheduled tick ещё не наблюдались.
 Auto-merge/deploy нет; новые risky scopes не активируются из внешнего списка.
 
-Обязательный остаток: владелец ответил «Ещё не проверял» для Huawei/Keenetic,
-ChatGPT login/message/file и Wi-Fi → mobile. Issue #3 и полный GOAL остаются открыты.
-Следующий шаг — этот реальный пользовательский прогон; endpoint-строки прежние.
+На закрытии предыдущего этапа владелец ответил «Ещё не проверял» для Huawei/Keenetic,
+ChatGPT login/message/file и Wi-Fi → mobile. Позже сообщил «работает» и указал на
+невключённый Gemini; это не подтверждает автоматически все функциональные проверки.
+GEO-профиль теперь включён целиком, подтверждён wire/readback и анонимным HTTP;
+запрошен результат повторного открытия Gemini с реальной сессией. Endpoint-строки
+прежние. Issue #3 и полный GOAL остаются открыты до необходимой продуктовой приёмки.
 Renewal DNS-01 сертификата пока ручной. Ранее принятые native checks повторяются
 только при изменении входов/условий или новом расхождении.

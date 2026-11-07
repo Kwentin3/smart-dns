@@ -13,7 +13,7 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from tools.registry import REPOSITORY, fetch_snapshot
+from tools.registry import REPOSITORY, SOURCE_REPOSITORIES, fetch_snapshot
 
 
 def selected_lists(catalog):
@@ -33,8 +33,11 @@ def project_catalog(catalog, registry, validate_hostname):
         if "upstream" not in service:
             continue
         ref = service["upstream"]
-        if ref.get("source") != "metacubex-sing" or not isinstance(registry, dict) or registry.get("schema_version") != 1 or registry["source"]["repository"] != REPOSITORY:
-            raise ValueError("selected service requires the accepted MetaCubeX registry snapshot")
+        repository = SOURCE_REPOSITORIES.get(ref.get("source"))
+        if not repository or not isinstance(registry, dict) or registry.get("schema_version") != 1 or registry["source"]["repository"] != repository:
+            raise ValueError("selected service requires its accepted source registry snapshot")
+        if repository != REPOSITORY and registry["source"].get("private_only") is not True:
+            raise ValueError("GEO source snapshot must remain private")
         list_id = ref["list"]
         definition = registry["definitions"][list_id]
         if definition["source_blob"] != registry["index"][list_id]["blob_sha"]:
@@ -89,8 +92,11 @@ def configure(catalog, registry, list_id, enabled, reason, *, local_id=None, acc
             raise ValueError("provide --id as a simple local service name")
         if any(s["id"] == identifier for s in result["services"]):
             raise ValueError("local service ID already exists")
+        source_id = next((key for key, value in SOURCE_REPOSITORIES.items() if value == registry["source"]["repository"]), None)
+        if source_id is None:
+            raise ValueError("unsupported registry source")
         service = {"id": identifier, "name": list_id, "domains": [], "enabled": False, "reason": reason,
-            "upstream": {"source": "metacubex-sing", "list": list_id, "approved_scope": {"exact": [], "suffix": []}}}
+            "upstream": {"source": source_id, "list": list_id, "approved_scope": {"exact": [], "suffix": []}}}
         result["services"].append(service)
         approve_scope = True
     if not isinstance(reason, str) or not reason.strip():
