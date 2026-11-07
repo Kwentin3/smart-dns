@@ -34,7 +34,8 @@ Gemini/API и выборка других GEO-ресурсов дают прав
 53 native GEO checks и проверку systemd templates. Оператор `6ebfabd` применил
 профиль на production: actual status `matches`, admission/protected containers
 сохранены, все четыре service groups ON. Снаружи прошли 180 DoH/DoT/origin checks;
-анонимные Gemini `/app` и `/` отвечают HTTP 200. Private timer активен, первое
+анонимные Gemini `/app` и `/` отвечают HTTP 200. Владелец подтвердил для Gemini
+«Заработал». Private timer активен, первое
 native выполнение завершилось Result=success/exit0 и `changed=false`. Канонические
 GEO inputs — private `.local/policy/rules/`, public Meta в Git — discovery/example.
 [Evidence](reports/2026-11-07/geoblock-profile.md).
@@ -377,6 +378,16 @@ ChatGPT login/message/file и Wi-Fi → mobile. Позже сообщил «ра
 невключённый Gemini; это не подтверждает автоматически все функциональные проверки.
 GEO-профиль теперь включён целиком, подтверждён wire/readback и анонимным HTTP;
 запрошен результат повторного открытия Gemini с реальной сессией. Endpoint-строки
-прежние. Issue #3 и полный GOAL остаются открыты до необходимой продуктовой приёмки.
+прежние. После GEO-rollout владелец подтвердил «Заработал» для Gemini: этот
+продуктовый пробел закрыт. Все прочие функции/смену сети из этого ответа не выводим.
+Issue #3 и полный GOAL остаются открыты до необходимой продуктовой приёмки.
 Renewal DNS-01 сертификата пока ручной. Ранее принятые native checks повторяются
 только при изменении входов/условий или новом расхождении.
+
+07 ноября фактический changed-source путь публичного discovery прошёл полностью:
+[run 42346695609](https://github.com/Kwentin3/smart-dns/actions/runs/42346695609)
+создал [PR #7](https://github.com/Kwentin3/smart-dns/pull/7). PR blob совпал с
+artifact checksum, candidate contracts PASS; лицензия и выбранные AI definitions
+не изменились. После review PR принят: index теперь 2021, новые category entries
+не активировались на VPS. Приватный GEO-source и его accepted policy не менялись.
+Естественный timer tick/changed-source GEO proposal ещё не наблюдались.
