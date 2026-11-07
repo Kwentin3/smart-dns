@@ -190,3 +190,101 @@ systemd refresh and service-only apply/restore; do not change shared edge/Hermes
 After activation, prove actual routing/direct controls, update/exclusion/rollback
 and ordinary-user functions in software/developer, cloud and media/game categories.
 DNS/TLS and source counts alone cannot close these acceptance requirements.
+
+## Release questions before activation
+
+The owner's [review of PR #13](https://github.com/Kwentin3/smart-dns/pull/13#pullrequestreview-5811444613)
+allows merging this repository-only slice once these questions are recorded.
+They remain open release decisions, not authorization to deploy Fancy or increase
+the production budget. The currently accepted GEO profile stays active.
+
+### 1. Broad suffixes versus ordinary direct traffic
+
+A suffix routes its apex and descendants regardless of URL, account or whether
+that individual request needs a foreign address. For example, ordinary browsing
+on `www.amazon.com` and `www.microsoft.com` would also use the relay under the
+proposed `amazon.com` and `microsoft.com` grants. Other vendor domains are separate
+matchers; a vendor name alone does not determine their routing. DNS/SNI cannot
+distinguish a blocked download from an ordinary page on the same hostname.
+
+Before activation, present the private candidate's broad roots, exact grants,
+baseline-to-candidate diff and the owner's ordinary critical hostnames with their
+effective route and granting group. Existing `list` / `show community-geo` expose
+the candidate's desired matchers and approvals; they do not automatically classify
+ordinary browser scenarios or prove regional restrictions. They refer to the
+deployment manifest selected for that command, not automatically to this candidate.
+
+An exact `exclude NAME` keeps that name direct, not its whole subtree. If a broad
+root is unwanted but specific children are needed, prepare a narrower local
+approval: remove that broad suffix from every grant that still supplies it,
+retain only reviewed exact names/narrow suffixes and compile the resulting wire
+scope before approval. Keep these decisions in the existing canonical catalog;
+do not hand-edit AGH, HAProxy and Traefik separately. Existing ON/OFF shared-route
+semantics must be inspected: OFF on an overlapping broad service is not a promise
+of a blanket deny when an enabled individual still shares that namespace.
+
+Some necessary dependencies may be unknown. Preserving every GEO function while
+pruning a broad namespace cannot be promised without that resource's functional
+test. The owner must accept the broad side effect or the reviewed narrower scope
+and its remaining gaps. If this changes the candidate, recheck the affected native
+path; the previous full-profile checksum does not certify the modified scope.
+
+### 2. Freshness of retained grants
+
+The coverage summary must distinguish these states before activation:
+
+| Portion | Update/freshness claim |
+| --- | --- |
+| Source-backed `community-geo` | Fancy is fetched by the existing refresh; approved bounds and review gates still apply |
+| Retained local baseline | Frozen at its recorded source commit; current upstream membership and continued need are not automatically checked |
+| Native `status=matches` | Desired/runtime policy agrees; this is not a freshness or application-success claim |
+
+Frozen services already carry `previously-accepted-local-baseline` provenance and
+immutable `source_path`, visible in desired `list/show` output. There is currently
+no automatic stale-grant warning or live itdog comparison for those rows. A
+successful Fancy refresh must not be described as updating the entire retained
+policy. A removed Fancy entry can also remain routed through a frozen local grant.
+
+Before activation, assign the owner and next review date for these retained rows.
+At release review, compare them privately with fresh itdog/Fancy snapshots using
+the existing source collector, without accepting or activating the fetched data.
+Show unchanged, absent/different and unverified rows separately; upstream absence
+is a review signal, not permission for silent deletion. Retire or narrow obsolete
+local grants through a reviewed catalog change. If manual reconciliation is not
+acceptable, this migration's freshness decision remains unresolved; this PR does
+not add another timer or claim that automatic reconciliation exists.
+
+### 3. Bounded rollout and user acceptance
+
+After the separate scope/budget decision, use one short agreed observation window
+(initially 15 minutes, not a load test) and keep the accepted generation ready:
+
+1. Before mutation, read back the actual baseline and source/input identities,
+   client/admin admission, protected container IDs/StartedAt and current resource
+   use. Agree `max_policy_entries=4096`, the exact private candidate, existing
+   CPU/memory/PID limits, rollback trigger and window. Do not install a lab/build
+   on production or change shared edge/Hermes infrastructure.
+2. Apply through the existing service-only operator. Check desired/actual, full
+   native rules and relay identity, refused unknown client, resource/health state
+   and unchanged protected containers. Resource exhaustion, drift or an ordinary
+   site/Hermes regression triggers immediate rollback through the same operator.
+3. On one admitted ordinary device, compare before/after use of one newly covered
+   non-AI resource and one resource from another category. Developer/software,
+   cloud and media/game candidates are selected from the actual approved diff
+   and available accounts. Confirm a principal function such as login plus a
+   real download, workspace action or playback; record unsupported/account/ASN
+   cases instead of declaring them working from DNS/TLS.
+4. Check three owner-selected ordinary critical sites, the broad namespaces
+   discussed above according to the chosen routing decision, one existing AI
+   function and Hermes's ordinary endpoint. Confirm intended direct/relay paths,
+   usable browsing/download and one Wi-Fi-to-mobile reconnect on that device.
+   Compare the same controls after a refresh; OFF/exclusions must remain effective.
+5. Exercise the prepared rollback and confirm restored policy, the same ordinary
+   controls and preserved admission/Hermes. Keep the old profile if any required
+   check is unavailable or fails; do not silently leave the expanded profile as
+   accepted. Further rollout follows an explicit acceptance result.
+
+Record for each sampled resource: source discovery, enabled policy, verified wire
+path, actual user function or an explicit unsupported/unverified reason. The
+1305 additional predicates are source coverage, never 1305 accepted services.
+No part of this checklist was executed on production by this PR.

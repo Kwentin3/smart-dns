@@ -62,6 +62,12 @@ source outage и rollback. Полные 2508 native AGH rules и Docker label 94
   sites и смену сети; отделить source coverage, routing и пользовательскую приёмку.
 
 Поставка разрешённой repo-части — [PR #13](https://github.com/Kwentin3/smart-dns/pull/13).
+В [ревью владельца](https://github.com/Kwentin3/smart-dns/pull/13#pullrequestreview-5811444613)
+merge этого repo-only среза разрешён после фиксации трёх release questions;
+допуск на активацию Fancy из этого решения не следует. Перед запуском остаются
+явные решения: побочный охват широких suffix и нужные сужения, ручная проверка
+актуальности frozen grants, ограниченная приёмка влияния на сайты/ресурсы/Hermes
+с согласованным бюджетом 4096 и откатом. [Подробные ограничения и сценарий](reports/2026-11-07/universal-geo-candidate.md#release-questions-before-activation).
 Следующий этап — сверка live baseline, отдельное согласование конкретного
 расширения и лимита, service-only rollout/readback и пользовательские сценарии.
 Готовность текущего этапа и
