@@ -52,4 +52,23 @@ Deploy hook проверен; автоматический выпуск пока
 пару: hook проверяет readback/restore, но SIGKILL между заменами требует диагностики.
 Полная приёмка телефона, файлов и смены сети остаётся обязательным шагом всего GOAL.
 
-Production rollout и финальная идентичность артефакта ещё не подтверждены этим отчётом.
+## Production rollout
+
+Артефакт `8764162f4e2954a7ad85e48675a01302a617ef2c` прошёл CI и применён на VPS
+через тот же CLI/native operator. Actual generation:
+`f17746a8b6fb9ca0fb66d4139b57a565c1ce079342e2df476e6759efbe245cc8`, status=`matches`.
+Все четыре группы ON; native service rules и canonical inputs не изменились.
+Все контейнеры, кроме разрешённого relay, сохранили ID/StartedAt, включая AGH
+и общий edge. Сборки и rehearsal на production не выполнялись.
+
+`smart-dns status` установлен как тонкий shortcut к pinned operator. Новый
+systemd refresh впервые выполнен с Result=success/exit0; ежедневный timer активен,
+прежний proposal-only timer отключён. Certbot deploy hook ограничен собственной
+lineage, проверил текущую пару и вернул `unchanged`; выпуск/renewal не запускался,
+остальные сертификаты и shared Traefik не изменялись.
+
+Private production receipts: `.local/product-controls/production/`.
+Внешний прогон после rollout: 180 DoH/DoT/origin-TLS checks PASS, включая обычные
+сайты и отказ неизвестному клиенту. Это подтверждает transport, но не подменяет
+приёмку функций приложений и устройств. Временные лабораторные каталоги,
+контейнеры, сети и locks удалены; frozen inputs и receipts сохранены локально.

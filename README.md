@@ -40,6 +40,8 @@ AI-пилотом/discovery. Полные действующие GEO preferences
 
 Для действующей установки есть один операторский вход:
 
+На VPS установлен shortcut `smart-dns`: например, `smart-dns status`.
+
 ```sh
 python3 tools/product.py status
 python3 tools/product.py off chatgpt --reason 'Paused by owner'
