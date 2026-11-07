@@ -109,7 +109,8 @@ unchanged, and candidate inputs remained byte-identical.
 
 Compiled generation:
 `7392c507d4d6bfef3ad4d00ae4e207258be0e9b7996ff1f0228b02aa3a2ee535`.
-Native minimized wire scope: 114 exact + 1140 suffix roots; edge label 95,422 bytes.
+Native minimized wire scope: 114 exact + 1140 suffix roots; Compose label 95,422
+bytes and native Docker label 94,282 bytes after Compose's dollar conversion.
 The raw desired policy exceeded the existing default budget of 2048. Verification
 used the existing explicit `max_policy_entries: 4096` setting in a disposable
 fixture; neither the default nor production settings were changed.
@@ -119,19 +120,72 @@ baseline preservation, refresh gates, failure last-good, OFF/exclusions,
 rollback and CLI read-only behavior. CI results belong to the delivered revision.
 Private evidence is retained under `.local/issue12-research/`; complete candidate
 inputs under `.local/issue12-candidate-v2/`. The initial candidate with an incorrect
-source declaration is superseded by v2 and must not be deployed.
+source declaration was superseded by v2 and removed after verification.
 
-Full native HAProxy/Traefik/Docker label transport for this larger candidate is
-**NOT VERIFIED** here: Docker is unavailable in this Windows workspace. The prior
-smaller label proof does not establish this candidate's transport. Linux lab,
-live readback, changed-source integration on the actual deployment, runtime
-resource bounds, ordinary browsing and application functions remain required.
-No clean lab/build will run on production without separately prepared resources
-and authorization. Full #12 remains open.
+### Full Docker-provider and operator acceptance
+
+The missing Linux native stage is now verified on an isolated GitHub-hosted
+Ubuntu runner, without using the production VPS. Reuse of the existing private
+lab lifecycle exposed a test gap: that older harness parsed a FILE-provider rule
+and transported an inert custom Docker label. The tracked `tools/native_lab/`
+instead runs the actual compiler-produced Docker provider, labels, AGH and
+HAProxy. No FILE-provider route substitutes for the production owner's path.
+
+[Native run 42360351223](https://github.com/Kwentin3/smart-dns/actions/runs/42360351223)
+at source revision `1a1bbfeda0adb72e5a349c98a607c1b70aa6f6be` completed successfully.
+The aggregate artifact was downloaded and read back; its candidate/baseline
+catalog and registry checksums exactly match the local reproduction. The source
+pins above and enforcement checksum
+`2e815b2927ecd1d292b2d6258a1a734b40ed577e8dd69da1b0d0ee52c92bc136`
+bind it to the reviewed candidate, not a synthetic scale list.
+
+The CI reconstruction and its local reproduction have identical input checksums.
+Compared with the original saved v2, the registry and enforcement scope are
+identical; only immutable `source_path` annotations on the retained ChatGPT/Claude
+services differ. Complete catalog bytes across those two variants are therefore
+not claimed identical. These annotations do not change service state, matchers
+or exclusions.
+
+| Observation | Actual native evidence |
+| --- | --- |
+| Complete policy | All 2508 AGH rules and all 94,282 native Docker-label bytes match the compiler |
+| Wire path | 52 checks: nine exact/suffix/descendant samples, A rewrites, AAAA/HTTPS/SVCB suppression, positive direct DNS, denied client, negative relay cases, own HTTPS coexistence |
+| Origin TLS | System-CA-verified TLS for OpenAI and non-AI Tailscale through both actual edge and relay |
+| Operator commands | Eight real CLI invocations: status, add, off, refresh, failed refresh, exclude, refresh, rollback; 60 checks |
+| Owner preferences | Tailscale OFF and exact OpenAI exclusion remain direct after source refresh; edge returns local 404 and relay rejects these names |
+| Source outage | Native transport through an unavailable loopback proxy fails; accepted source/catalog bytes, native rules, OFF and existing service remain unchanged |
+| Rollback | Initial canonical inputs restored exactly; DNS rewrite and verified origin TLS restored |
+| Isolation | DNS/edge/existing-site IDs and StartedAt, native admission unchanged; only owned relay operations permitted |
+| Runtime identity and cleanup | Four running image IDs/digests match the lock; Python cleanup and workflow fallback confirm no owned containers/networks remain |
+
+The fixture uses the same enforcement scope with disposable infrastructure
+settings, public lab credentials and explicit 4096 budget. Its compiled generation
+is `6d7bfad335f400f73434acd5783ca3e53d1c7bf1e3d2b4b833f6ed4d03b6961c`;
+this differs from the earlier Windows fixture's generation because its settings
+differ. Neither fixture is claimed to be a production deployment artifact.
+
+Windows and Linux unit contracts: 152 PASS; [Linux CI](https://github.com/Kwentin3/smart-dns/actions/runs/42360350444).
+Native receipts are retained privately in `.local/issue12-cli-ci-receipts/` and
+published as aggregate `inputs.json`, `readback.json`, `management.json`, `result.json`
+only. Complete corpora, configs, runtime logs and private credentials are excluded.
+
+The successful refreshes saw the unchanged actual source. This proves native
+refresh/retained decisions and outage handling; it does not claim that a new
+Fancy upstream change occurred. Additive/removed/unsupported/partial/licensing
+transitions are exercised through real collector/projection owners with synthetic
+transport in the behavior tests. The historical real changed-source Meta update
+is separate discovery evidence, not a changed-source Fancy production acceptance.
+
+Remaining product acceptance: current live-baseline identity, separately approved
+4096 budget and source activation, production readback/resource behavior, actual
+changed-source behavior on that deployment, ordinary browsing, app functions in
+multiple categories, and network/device switching. No build/lab ran on production.
+Full #12 remains open.
 
 Before activation: verify the current live baseline identity against the candidate,
-run the full isolated native path, then obtain approval for this specific source
-scope and the explicit budget change. Keep existing private deployment paths,
+then obtain approval for this specific source scope and the explicit budget
+change. Native evidence above is reusable while relevant source, scope and
+environment conditions remain unchanged. Keep existing private deployment paths,
 systemd refresh and service-only apply/restore; do not change shared edge/Hermes.
 After activation, prove actual routing/direct controls, update/exclusion/rollback
 and ordinary-user functions in software/developer, cloud and media/game categories.

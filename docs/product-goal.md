@@ -35,8 +35,11 @@ JSON v3 даёт 613 exact + 692 suffix predicates сверх сохранённ
 Приватный кандидат сохраняет прежние grants и добавляет `community-geo`.
 После миграции Fancy становится единственным обновляемым upstream, а прежний
 itdog baseline сохраняется как frozen local policy с provenance; второй
-live source owner не создаётся. Проверено 148 unit/behavior checks, 35 native
-AGH wire cases и реальный repeat proposal. Для полной политики нужен явный
+live source owner не создаётся. Проверено 152 unit/behavior checks, 35 Windows
+AGH wire cases и полный Linux Docker-provider прогон: 52 wire/readback checks,
+восемь реальных CLI-вызовов / 60 checks, включая OFF/exclude после refresh,
+source outage и rollback. Полные 2508 native AGH rules и Docker label 94,282 bytes
+совпали с compiler; pinned images и cleanup подтверждены. Для полной политики нужен явный
 `max_policy_entries: 4096`; production остаётся с прежними settings.
 [Сравнение, компромиссы и границы проверки](reports/2026-11-07/universal-geo-candidate.md).
 
@@ -46,19 +49,22 @@ AGH wire cases и реальный repeat proposal. Для полной поли
   реальные exact/suffix границы с действующим набором; показать непокрытое.
 - [x] Выбрать минимальный поддерживаемый source path для дополнительного GEO
   покрытия; не строить платформу объединения источников без необходимости.
-- [ ] Подготовить и проверить конкретную расширенную policy и обновление через
-  существующих владельцев; кандидат подготовлен и native AGH проверен, полный
-  HAProxy/Traefik/Docker путь большого label требует отдельной Linux lab.
-  Docker в текущем Windows workspace недоступен; на production lab не запускалась.
-  Новые полномочия остаются предложением до допуска.
+- [x] Подготовить и проверить конкретную расширенную policy и обновление через
+  существующих владельцев. Native Docker-provider lab выполнена на изолированном
+  GitHub runner, source revision `1a1bbfe`, [run 42360351223](https://github.com/Kwentin3/smart-dns/actions/runs/42360351223).
+  Артефакт прочитан обратно, checksum входов совпал с локальной репетицией.
+  Реальные refresh были без изменения upstream; changed-source Fancy production
+  не заявляется. На production lab не запускалась; новые полномочия остаются
+  предложением до допуска.
 - [ ] После отдельного допуска применить проверенный артефакт, подтвердить
   native actual, отрицательные/direct cases, сохранение OFF/exclusions и rollback.
 - [ ] Подтвердить основные функции репрезентативных не-AI ресурсов, ordinary
   sites и смену сети; отделить source coverage, routing и пользовательскую приёмку.
 
-Следующий шаг — полная изолированная native lab для точного кандидата и проверка
-Linux CI; затем согласование конкретного расширения и лимита, service-only
-rollout/readback и пользовательские сценарии. Готовность текущего этапа и
+Поставка разрешённой repo-части — [PR #13](https://github.com/Kwentin3/smart-dns/pull/13).
+Следующий этап — сверка live baseline, отдельное согласование конкретного
+расширения и лимита, service-only rollout/readback и пользовательские сценарии.
+Готовность текущего этапа и
 готовность всего продукта различаются. Полный GOAL
 остаётся открытым, пока обязательный остаток не закрыт evidence. Историческое
 утверждение ниже, что осталась только приёмка телефона, относится к объёму #3;
