@@ -6,31 +6,10 @@
 
 Сначала устройство спрашивает у нашего DNS адрес сайта. **Только после ответа DNS** оно устанавливает соединение — либо с обычным сайтом, либо с зарубежным VPS. На диаграмме показаны оба сценария.
 
-```mermaid
-sequenceDiagram
-    autonumber
-    participant U as Устройство / роутер
-    participant D as VPS: AdGuard Home (DNS)
-    participant T as VPS: Traefik
-    participant H as VPS: HAProxy
-    participant O as Обычный сайт
-    participant G as GEO-сайт
-    U->>D: Запрос DNS по DoH/DoT
-    Note over D: Проверка ClientID и правил GEO-каталога
-    alt Домен НЕ входит в GEO-каталог
-        D-->>U: Настоящий IP обычного сайта
-        U->>O: HTTPS к настоящему IP — напрямую
-        O-->>U: Ответ напрямую, минуя VPS
-    else Домен входит в GEO-каталог
-        D-->>U: IP зарубежного VPS вместо IP сайта
-        U->>T: HTTPS/TCP к IP VPS, SNI нужного сайта
-        T->>H: Передача соединения по SNI
-        H->>G: TCP к настоящему сайту, TLS без расшифровки
-        G-->>H: Зашифрованный ответ
-        H-->>T: Передача ответа
-        T-->>U: Ответ через VPS
-    end
-```
+![Как работает Smart DNS: один пользовательский клиент, DNS-ответ, прямой HTTPS или HTTPS через VPS](docs/assets/smart-dns-flow.svg)
+
+[Открыть схему в векторном формате (SVG)](docs/assets/smart-dns-flow.svg).
+
 
 **Легенда:**
 
