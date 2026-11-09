@@ -9,6 +9,10 @@
 Их числа, ограничения и команды относятся к дате отчёта.
 [Текущий продуктовый остаток](product-goal.md) ведётся отдельно от технической приёмки.
 
+Публикация принятой политики в приватный Git включена и проверена **2026-11-09**;
+актуальные source bindings и её контракт приведены ниже. Исторические числа
+остальных проверок относятся к дате соответствующего отчёта.
+
 ## Что работает и кому принадлежит
 
 Два контейнера Compose project `smart-dns`: `dns` (AdGuard Home) и `relay`
@@ -36,9 +40,10 @@ DNS/TLS-проверка не доказывает полную функцию �
 
 | Владелец / проверенная версия | Источник истины и где искать |
 | --- | --- |
-| Оператор `smart-dns`, source `9980f67` | `/usr/local/bin/smart-dns` → `/opt/smart-dns/releases/geo-9980f67/source/tools/product.py`; manifest `/opt/smart-dns/.local/deployment.json` задаёт пути inputs, releases, receipts, TLS и management |
+| Оператор `smart-dns`, source `78d1514` | `/usr/local/bin/smart-dns` → `/opt/smart-dns/releases/policy-git-78d1514/source/tools/product.py`; тот же source использует существующая refresh service. Manifest `/opt/smart-dns/.local/deployment.json` задаёт пути inputs, releases, receipts, TLS, management и `policy_git` |
 | Локальные ON/OFF, ручные suffix, исключения, approved scope | Manifest `catalog`: сейчас `/opt/smart-dns/.local/policy/rules/pilot.json`. Ручная запись LemonFox сохранена после refresh |
 | Community discovery / GEO definitions | Manifest `registry` и `sources` в том же private `policy/rules/`; обновляемый Fancy `russia-fancy-geo`, прежний itdog — frozen local policy с provenance. Frozen часть сама не обновляется |
+| Приватная история политики, Git **2.30.2** | `policy_git.directory`: `/opt/smart-dns/.local/policy/rules`; отслеживаются только `pilot.json`, `registry.json`, `sources.json`. Remote/branch и author identity — native `.git/config`; выделенный SSH profile/key принадлежат service account и находятся вне Git |
 | AGH **0.107.80** | Writable `/opt/smart-dns/runtime/agh-conf/AdGuardHome.yaml`: актуальные клиенты/отзывы, admin, effective rules; bootstrap `settings.client_ids` не заменяет этот owner. Work directory — tmpfs, durable history там нет; query log/statistics отключены |
 | HAProxy **3.2.26-alpine** | Actual generation из `smart-dns status`: её `compose.production.json`, `haproxy.cfg`, `denied-v4.txt`, `snapshot.json` и `inputs/`. Relay работает из архива product-releases, AGH — из `/opt/smart-dns/runtime/compose.production.json`; это разные действующие Compose paths |
 | Общий Traefik **3.6.25** | Native platform Compose `/opt/platform/traefik/compose.platform-edge.yml` с ingress overlay и `/opt/smart-dns/runtime/edge.override.json`. Полный текущий набор `-f` брать из container labels, включая env и внешние сети; не запускать по одному base-файлу |
@@ -65,8 +70,11 @@ OpenSSL и system CA. Это проверенная база, не обещан�
 
 ## Версионирование принятой политики в Git: opt-in
 
-Это контракт исходного кандидата от 2026-11-09; на действующем VPS он ещё
-**НЕ ВКЛЮЧЁН**. Существующий `smart-dns` остаётся владельцем операций, а отдельный
+**Включено 2026-11-09** на проверенном source `78d1514`. Первый снимок и повторный
+`git-sync` сохранили одно поколение политики и один Git commit. Обычный refresh
+через прежнюю systemd service принял обновление registry и создал второй commit;
+оба снимка побайтно сверены с private GitHub API. Существующий `smart-dns` остаётся
+владельцем операций, а отдельный
 приватный Git-репозиторий версионирует его фактические `catalog`, `registry`,
 `sources`. Репозиторий должен содержать только эти три файла; Git не заменяет
 native readback и не становится отдельным редактором правил.
@@ -76,7 +84,7 @@ native readback и не становится отдельным редактор
 ```json
 {
   "policy_git": {
-    "directory": "policy",
+    "directory": "policy/rules",
     "remote": "origin",
     "branch": "main"
   }
@@ -85,6 +93,8 @@ native readback и не становится отдельным редактор
 
 `directory` разрешается относительно manifest. Это существующая рабочая Git-копия
 с тремя canonical inputs внутри; например, `policy/rules/{pilot,registry,sources}.json`.
+В действующей установке Git root — именно `policy/rules`, поэтому файлы в истории
+имеют плоские имена. Соседние source proposals в родительском каталоге не публикуются.
 `settings`, origins, пароль admin, TLS, releases и receipts должны находиться
 вне неё. Имена remote/branch задаются явно. Git root не может быть общим репозиторием
 исходников или содержать посторонние tracked/staged/untracked файлы.
@@ -136,9 +146,19 @@ lock: без source fetch и native reapply. При native drift публика�
 remote требует ручной сверки, автоматических merge/rebase/force-push нет.
 Без `policy_git` сохраняются прежние команды, результаты и требования среды.
 
-Включение в production — отдельный шаг: подготовить приватный remote и credentials,
+При новой установке сначала подготовить приватный remote и credentials,
 сохранить прежние bindings, установить проверенный source release, затем включить
 опцию и выполнить первый `git-sync`/readback. Это не меняет существующий timer.
+
+На существующем Debian 11 Git установлен штатными пакетами без обновления уже
+установленных пакетов. Для недоступных package bytes исправлен только URI
+security source на официальный `https://archive.debian.org/debian-security`:
+его signed InRelease совпал с прежним индексом; проверка подписей сохранена.
+
+Для отключения Git-публикации восстановить прежние source bindings и убрать
+`policy_git`, сохранив текущие принятые canonical inputs. Отключение функции
+не должно возвращать старый registry или выполнять Git reset. Прежний source,
+резервные конфигурации и история policy remote сохранены.
 
 ## GEO-обновление и обновление программ
 
