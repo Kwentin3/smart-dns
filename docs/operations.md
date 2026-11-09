@@ -63,6 +63,83 @@ Python 3.9.2, Docker 29.8.0 / Compose 5.5.1, systemd 247, OpenSSL 1.1.1w.
 Tools используют Python 3.9+ stdlib, Docker/Compose; certificate hook — ещё
 OpenSSL и system CA. Это проверенная база, не обещание поддержки любых следующих версий.
 
+## Версионирование принятой политики в Git: opt-in
+
+Это контракт исходного кандидата от 2026-11-09; на действующем VPS он ещё
+**НЕ ВКЛЮЧЁН**. Существующий `smart-dns` остаётся владельцем операций, а отдельный
+приватный Git-репозиторий версионирует его фактические `catalog`, `registry`,
+`sources`. Репозиторий должен содержать только эти три файла; Git не заменяет
+native readback и не становится отдельным редактором правил.
+
+В deployment manifest можно добавить:
+
+```json
+{
+  "policy_git": {
+    "directory": "policy",
+    "remote": "origin",
+    "branch": "main"
+  }
+}
+```
+
+`directory` разрешается относительно manifest. Это существующая рабочая Git-копия
+с тремя canonical inputs внутри; например, `policy/rules/{pilot,registry,sources}.json`.
+`settings`, origins, пароль admin, TLS, releases и receipts должны находиться
+вне неё. Имена remote/branch задаются явно. Git root не может быть общим репозиторием
+исходников или содержать посторонние tracked/staged/untracked файлы.
+
+Оператор заранее создаёт пустой приватный remote и рабочую копию, задаёт native
+Git author identity и `origin`, проверяет выбранную ветку. Код не создаёт remote,
+не определяет приватность сервиса по Git URL и не получает токены из policy.
+Доступность Git на host и неинтерактивный доступ по SSH или через credential helper проверяются
+для того же account/environment, который запускает `smart-dns-product-refresh.service`.
+Python остаётся stdlib-only; Git — дополнительная host dependency только при opt-in.
+Новый `tools/policy_git.py` должен войти в проверенный source release оператора:
+изменение checkout само по себе не переключает установленный shortcut или unit.
+
+Контракт выполнения:
+
+1. До native apply проверяются Git root, bindings трёх файлов, ветка и отсутствие
+   посторонних файлов, staged-изменений и запрещённых путей в истории.
+   Ошибка этой проверки не применяет политику.
+2. Существующий оператор применяет/проверяет политику и публикует canonical inputs.
+   Только после native `matches` Git adapter получает точные принятые bytes.
+3. Adapter проверяет неизменность файлов, создаёт commit при изменении bytes,
+   отправляет конкретный commit в выбранный ref без force и читает remote ref назад.
+   Полученный ref и blob bytes должны соответствовать принятой политике.
+4. Тот же путь используется для успешных `refresh`/`rollback`/ручных операций.
+   Source failure или review-required предложение не публикуются. Успешный refresh
+   без изменений может завершить ранее неудавшуюся публикацию.
+
+Детерминированы состав трёх файлов, их точные bytes, `content_sha256`, порядок
+операций и исходы. Повторная публикация тех же bytes не создаёт новый commit.
+Git commit ID также зависит от родителя и metadata времени; одинаковый commit ID
+для независимых историй этот контракт не обещает.
+
+При включённой опции результат содержит `runtime_status` и `policy_git`.
+`matches` и `policy_git.status=synced` означают, что native состояние и remote
+сверены. Если push/проверка remote не удались после native apply, возвращаются
+`status=git-sync-pending`, `runtime_status=matches`, безопасная причина и exit 1.
+Принятую политику из-за ошибки Git не откатывают. При конкурентной замене canonical
+inputs возвращается `runtime_status=not-rechecked`; внешние правки сохраняются.
+Следующий `status` сверяет состояние заново и не создаёт commit.
+
+```sh
+smart-dns status
+smart-dns git-sync
+```
+
+`git-sync` повторяет только публикацию принятой политики под существующим product
+lock: без source fetch и native reapply. При native drift публикация запрещена.
+Локальный commit после отказа push сохраняется для повторной попытки; divergence
+remote требует ручной сверки, автоматических merge/rebase/force-push нет.
+Без `policy_git` сохраняются прежние команды, результаты и требования среды.
+
+Включение в production — отдельный шаг: подготовить приватный remote и credentials,
+сохранить прежние bindings, установить проверенный source release, затем включить
+опцию и выполнить первый `git-sync`/readback. Это не меняет существующий timer.
+
 ## GEO-обновление и обновление программ
 
 `smart-dns-product-refresh.timer` ежедневно запускает тот же `smart-dns refresh`
