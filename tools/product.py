@@ -12,6 +12,7 @@ import uuid
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from tools.catalog import configure, write_json
+from tools.policy_git import PolicyGit, PolicyGitError
 from tools.render import catalog_rules, compile_config, compile_production, write_new
 from tools.service_policy import PolicyError, management_address, read_status, require
 from tools.source_proposals import fetch_text, proposal
@@ -25,7 +26,7 @@ def load_deployment(path):
     value = json.loads(path.read_text(encoding="utf-8"))
     required = {"schema_version", "mode", "project", "settings", "catalog", "registry", "sources",
                 "admin_password_file", "management_base", "releases", "receipts", "dot_cert_dir"}
-    require(isinstance(value, dict) and required <= value.keys() and not value.keys() - required - {"origins"},
+    require(isinstance(value, dict) and required <= value.keys() and not value.keys() - required - {"origins", "policy_git"},
             "deployment fields are missing or unknown")
     require(type(value["schema_version"]) is int and value["schema_version"] == 1 and value["mode"] in ("production", "lab"), "unsupported deployment schema or mode")
     pattern = r"smart-dns(?:-[a-z0-9][a-z0-9-]{0,48})?" if value["mode"] == "production" else r"smart-dns-[a-z0-9][a-z0-9-]{0,48}"
@@ -42,6 +43,13 @@ def load_deployment(path):
     require(len(inputs) == len(set(inputs)), "deployment input paths must differ")
     for output in (value["releases"], value["receipts"]):
         require(all(output != item and output not in item.parents for item in inputs), "operation output overlaps canonical inputs")
+    if "policy_git" in value:
+        configuration = value["policy_git"]
+        require(isinstance(configuration, dict) and set(configuration) == {"directory", "remote", "branch"},
+                "policy_git requires only directory, remote and branch")
+        require(isinstance(configuration["directory"], str) and bool(configuration["directory"]),
+                "policy_git directory must be explicit")
+        configuration["directory"] = (path.parent / configuration["directory"]).resolve()
     return value
 
 
@@ -54,6 +62,51 @@ def status(deployment, inputs, *, status_reader=read_status):
         management_base=deployment["management_base"], admin_username=inputs["settings"]["admin_username"],
         admin_password=deployment["admin_password_file"].read_text(encoding="utf-8").strip(),
         production=deployment["mode"] == "production", registry=inputs["registry"], origins=inputs.get("origins"))
+
+
+def _input_bytes(deployment):
+    return {key: deployment[key].read_bytes() for key in INPUT_NAMES if key in deployment}
+
+
+def _git_result(deployment, report, accepted, *, publisher=None, publish=True):
+    """Compose Git evidence after native acceptance; never restore runtime here."""
+    if "policy_git" not in deployment:
+        return report
+    if report["status"] != "matches":
+        return {**report, "runtime_status": report["status"],
+                "policy_git": {"status": "not-checked", "reason": "runtime-not-matching"}}
+    runtime_status = "matches"
+    try:
+        if _input_bytes(deployment) != accepted:
+            runtime_status = "not-rechecked"
+            receipt = {"status": "pending", "reason": "inputs-changed"}
+        else:
+            publisher = publisher or PolicyGit(deployment)
+            receipt = (publisher.publish(expected={key: accepted[key] for key in ("catalog", "registry", "sources")})
+                       if publish else publisher.check())
+    except PolicyGitError as error:
+        receipt = error.receipt
+    except Exception:
+        receipt = {"status": "pending", "reason": "publication-failed"}
+    # An adapter failure can itself report a real concurrent edit. Check the
+    # owner binding on both success and failure before claiming native matches.
+    try:
+        if _input_bytes(deployment) != accepted:
+            runtime_status = "not-rechecked"
+            receipt = {**receipt, "status": "pending", "reason": "inputs-changed"}
+    except OSError:
+        runtime_status = "not-rechecked"
+        receipt = {**receipt, "status": "pending", "reason": "inputs-unavailable"}
+    return {**report, "status": "matches" if receipt["status"] == "synced" else "git-sync-pending",
+            "runtime_status": runtime_status, "policy_git": receipt}
+
+
+def operator_status(deployment, *, status_reader=read_status):
+    """Keep the native status owner intact and report publication separately."""
+    accepted = _input_bytes(deployment)
+    report = status(deployment, {key: json.loads(value) for key, value in accepted.items()},
+                    status_reader=status_reader)
+    return _git_result(deployment, report, accepted, publish=False)
 
 
 def catalog_view(inputs, service_id=None):
@@ -125,9 +178,16 @@ def prepare(deployment, inputs, directory):
 def operate(deployment, command, *, service_id=None, reason=None, domains=(), suffixes=(), to=None,
             status_reader=read_status, native=run_native, fetch=fetch_text):
     """Coordinate one operation under the CLI lock; replace only external boundaries in tests."""
-    original = {key: deployment[key].read_bytes() for key in INPUT_NAMES if key in deployment}
+    publisher = PolicyGit(deployment) if "policy_git" in deployment else None
+    if publisher is not None:
+        publisher.preflight()
+    original = _input_bytes(deployment)
     old = {key: json.loads(value) for key, value in original.items()}
     observed = status(deployment, old, status_reader=status_reader)
+    if command == "git-sync":
+        require(publisher is not None, "git-sync requires policy_git configuration")
+        require(observed["status"] == "matches", "native state must match before Git publication")
+        return _git_result(deployment, {**observed, "operation": command}, original, publisher=publisher)
     accepted = Path(observed["actual_directory"]).resolve(strict=True)
     candidate_inputs = copy.deepcopy(old)
     if command == "refresh":
@@ -147,7 +207,8 @@ def operate(deployment, command, *, service_id=None, reason=None, domains=(), su
             observed = status(deployment, old, status_reader=status_reader)
             accepted = Path(observed["actual_directory"]).resolve(strict=True)
             if observed["status"] == "matches":
-                return {**observed, "operation": command, "source_changed": False}
+                return _git_result(deployment, {**observed, "operation": command, "source_changed": False},
+                                   original, publisher=publisher)
         candidate_inputs["registry"] = update["candidate_registry"]
     elif command in ("on", "off"):
         require(any(service["id"] == service_id for service in old["catalog"]["services"]), "unknown local service ID")
@@ -217,9 +278,11 @@ def operate(deployment, command, *, service_id=None, reason=None, domains=(), su
                 require(all(deployment[item].read_bytes() == published.get(item, value) for item, value in original.items()),
                         "canonical inputs changed during publication")
                 published[key] = write_json(deployment[key], candidate_inputs[key])
-        report = status(deployment, read_inputs(deployment), status_reader=status_reader)
+        accepted_bytes = {**original, **published}
+        require(_input_bytes(deployment) == accepted_bytes, "canonical inputs changed after publication")
+        report = status(deployment, {key: json.loads(value) for key, value in accepted_bytes.items()},
+                        status_reader=status_reader)
         require(report["status"] == "matches", "native policy readback does not match published preferences")
-        return {**report, "operation": command, "generation": identifier}
     except BaseException:
         try:
             for key, value in published.items():
@@ -228,6 +291,8 @@ def operate(deployment, command, *, service_id=None, reason=None, domains=(), su
         finally:
             apply(candidate, restore, restore_inputs, "-restore")
         raise PolicyError("publication or readback failed; native policy restored; external edits preserved") from None
+    return _git_result(deployment, {**report, "operation": command, "generation": identifier},
+                       accepted_bytes, publisher=publisher)
 
 
 def main():
@@ -239,6 +304,7 @@ def main():
     commands.add_parser("show").add_argument("service_id")
     commands.add_parser("apply")
     commands.add_parser("refresh")
+    commands.add_parser("git-sync")
     for name in ("on", "off", "add", "exclude", "include"):
         command = commands.add_parser(name)
         command.add_argument("service_id", metavar="NAME" if name in ("exclude", "include") else "service_id")
@@ -254,7 +320,7 @@ def main():
             inputs = {key: json.loads(deployment[key].read_text(encoding="utf-8")) for key in ("catalog", "registry")}
             report = catalog_view(inputs, getattr(args, "service_id", None))
         elif args.command == "status":
-            report = status(deployment, read_inputs(deployment))
+            report = operator_status(deployment)
         else:
             import fcntl
             os.umask(0o077)
@@ -272,7 +338,7 @@ def main():
         print(json.dumps(report, ensure_ascii=False, indent=2))
         return 0 if report["status"] in ("matches", "desired-policy-only") else 1
     except Exception as error:
-        print(json.dumps({"status": "failed", "error": str(error) if isinstance(error, PolicyError) else type(error).__name__}))
+        print(json.dumps({"status": "failed", "error": str(error) if isinstance(error, (PolicyError, PolicyGitError)) else type(error).__name__}))
         return 1
 
 
