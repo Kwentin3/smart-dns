@@ -3,8 +3,8 @@
   "source": {
     "repository": "https://github.com/MetaCubeX/meta-rules-dat",
     "branch": "sing",
-    "commit": "d5db7761ed1fbb5a307c3435cb7e395c3115ac53",
-    "index_tree": "68dd1128bf02950fe45279636ea0cadf19ab8253",
+    "commit": "8fcd7bb317a3468d2476edd825d7d76e2ff6e9f0",
+    "index_tree": "1cf57e81749516cd792292bf059535f03e598172",
     "license": "GPL-3.0",
     "license_commit": "4178770badecb1b349fbcd62c737e0d7a2079729",
     "license_reference": "https://github.com/MetaCubeX/meta-rules-dat/blob/4178770badecb1b349fbcd62c737e0d7a2079729/LICENSE",
@@ -427,19 +427,19 @@
     },
     "alibaba": {
       "path": "geo/geosite/alibaba.json",
-      "blob_sha": "29f923e40ba8af30f592d3c61fca299b96500b67",
+      "blob_sha": "77ff699f11c41764a22d6e655d536d4418007edd",
       "size": 12312,
       "kind": "service-candidate"
     },
     "alibaba@!cn": {
       "path": "geo/geosite/alibaba@!cn.json",
-      "blob_sha": "c2b1e82b946db41c54743977de85f4ca976bb45b",
+      "blob_sha": "8979398dd8f4ea7212daba8b23f4cda0a617bf7a",
       "size": 1300,
       "kind": "attribute"
     },
     "alibaba@ads": {
       "path": "geo/geosite/alibaba@ads.json",
-      "blob_sha": "99206742d8a3216c50519cd0accdc9253c394da0",
+      "blob_sha": "21cf2befc92e85498c6299a9613a16f4dc0760e1",
       "size": 2726,
       "kind": "attribute"
     },
@@ -451,7 +451,7 @@
     },
     "alibaba@telemetry": {
       "path": "geo/geosite/alibaba@telemetry.json",
-      "blob_sha": "1eabc359e293b5b3116b1888f075994012e665cc",
+      "blob_sha": "8c8b8288950386d0f4707c698aac1c1b0f4139c9",
       "size": 1549,
       "kind": "attribute"
     },
@@ -517,7 +517,7 @@
     },
     "alphabet": {
       "path": "geo/geosite/alphabet.json",
-      "blob_sha": "08391f591b6714e8a8badaec20adc34493f03c45",
+      "blob_sha": "fa6058a78b1a7943196b7fc541c3c1fac04e4dcc",
       "size": 29170,
       "kind": "service-candidate"
     },
@@ -535,7 +535,7 @@
     },
     "alphabet@cn": {
       "path": "geo/geosite/alphabet@cn.json",
-      "blob_sha": "5ef45072327e6c3d5313be0b7b30a37b72e6f3b3",
+      "blob_sha": "dbdea6946764c296b0ec34878f6e2a2c31e28edf",
       "size": 4272,
       "kind": "attribute"
     },
@@ -691,9 +691,15 @@
     },
     "anthropic": {
       "path": "geo/geosite/anthropic.json",
-      "blob_sha": "9f67ea8217630622d097cc43ee990d02d2089ae0",
-      "size": 588,
+      "blob_sha": "ae8c06426572dbca821db8935cc2f28ef6d9c79a",
+      "size": 692,
       "kind": "service-candidate"
+    },
+    "anthropic@telemetry": {
+      "path": "geo/geosite/anthropic@telemetry.json",
+      "blob_sha": "329efbf4b248d418131f827a621d3c3d5ba97a65",
+      "size": 160,
+      "kind": "attribute"
     },
     "ap": {
       "path": "geo/geosite/ap.json",
@@ -745,7 +751,7 @@
     },
     "apple": {
       "path": "geo/geosite/apple.json",
-      "blob_sha": "f35076d3bfd35a01f36cfed7d6d526379d42d754",
+      "blob_sha": "026554760e716d6eb2a08b0bbad1e5a588e9a25c",
       "size": 53691,
       "kind": "service-candidate"
     },
@@ -829,7 +835,7 @@
     },
     "apple@cn": {
       "path": "geo/geosite/apple@cn.json",
-      "blob_sha": "958218cfef148c318d93899ca1b900757d20e961",
+      "blob_sha": "e4179b77c01537c49f780fbbeaff7ac8b4a0b760",
       "size": 10333,
       "kind": "attribute"
     },
@@ -1567,7 +1573,7 @@
     },
     "bytedance": {
       "path": "geo/geosite/bytedance.json",
-      "blob_sha": "e3c528f97f71d756c98ff5f31e72741cee2abafd",
+      "blob_sha": "276b9787dc29d7689dbb9cd324be0d3bb9c436d0",
       "size": 25231,
       "kind": "service-candidate"
     },
@@ -1585,7 +1591,7 @@
     },
     "bytedance@!cn": {
       "path": "geo/geosite/bytedance@!cn.json",
-      "blob_sha": "342888edfd98652b1f8e63f16e358a3c99bdc26e",
+      "blob_sha": "987f56c5231c0cdd9f23c500dc6b7e6d19cfc602",
       "size": 1637,
       "kind": "attribute"
     },
@@ -1669,7 +1675,7 @@
     },
     "canonical": {
       "path": "geo/geosite/canonical.json",
-      "blob_sha": "a3fb37603c32c4b6d8b3a4111548ed2d1315d70c",
+      "blob_sha": "021d1763725a21258936f82f499e55e1acbe9979",
       "size": 412,
       "kind": "service-candidate"
     },
@@ -1723,37 +1729,37 @@
     },
     "category-ads": {
       "path": "geo/geosite/category-ads.json",
-      "blob_sha": "4f3ca0b73eb1a2b531fdfca27bf2236c79af281a",
+      "blob_sha": "8fef420fc483ea8b88adcbca8b3f92f59e7e408e",
       "size": 24749,
       "kind": "category"
     },
     "category-ads-all": {
       "path": "geo/geosite/category-ads-all.json",
-      "blob_sha": "8d1bd22ca558c1af6d5e19215cfacd25bef4f9c9",
+      "blob_sha": "a2ef4c3b94fb73ca9c5200bcc54934e744850bd3",
       "size": 26194,
       "kind": "category"
     },
     "category-ads-all@ads": {
       "path": "geo/geosite/category-ads-all@ads.json",
-      "blob_sha": "56f1c360463d47e7905a76cbdc717d87af3175e1",
+      "blob_sha": "d2c82e95a30a74a14ed3e831ae71dbc96acc2c50",
       "size": 22955,
       "kind": "attribute"
     },
     "category-ads-all@telemetry": {
       "path": "geo/geosite/category-ads-all@telemetry.json",
-      "blob_sha": "ac1bcb58d68f7e562106b288c64d64526c724990",
+      "blob_sha": "d8846d4df7e86fc9f2622b49b23567a0acc1fb1a",
       "size": 6372,
       "kind": "attribute"
     },
     "category-ads-and-telemetry": {
       "path": "geo/geosite/category-ads-and-telemetry.json",
-      "blob_sha": "25edd0e2069fc5a643e288bc0faab4b64c0837c7",
+      "blob_sha": "964e05173299f1028806d4d51e9093e02da76c61",
       "size": 34562,
       "kind": "category"
     },
     "category-ads-and-telemetry@ads": {
       "path": "geo/geosite/category-ads-and-telemetry@ads.json",
-      "blob_sha": "6791eefb478e703fb7104ac2b53044a64dd60e8a",
+      "blob_sha": "3fcc192174ddf567bd5a72dbd6e3248662df5370",
       "size": 29671,
       "kind": "attribute"
     },
@@ -1765,7 +1771,7 @@
     },
     "category-ads-and-telemetry@telemetry": {
       "path": "geo/geosite/category-ads-and-telemetry@telemetry.json",
-      "blob_sha": "f59d27d322623ebbd0670dd5b8bd1aab528ec91a",
+      "blob_sha": "a17203235615486f9ceba03e9fd50b5f1423a1f8",
       "size": 16185,
       "kind": "attribute"
     },
@@ -1777,20 +1783,20 @@
     },
     "category-ads@ads": {
       "path": "geo/geosite/category-ads@ads.json",
-      "blob_sha": "a9d9a448ff12ec772816ae3c237541fbe4ffbf79",
+      "blob_sha": "648a97685ba0c95760eb7e4a7c3d9151ae92e801",
       "size": 21885,
       "kind": "attribute"
     },
     "category-ads@telemetry": {
       "path": "geo/geosite/category-ads@telemetry.json",
-      "blob_sha": "ac1bcb58d68f7e562106b288c64d64526c724990",
+      "blob_sha": "d8846d4df7e86fc9f2622b49b23567a0acc1fb1a",
       "size": 6372,
       "kind": "attribute"
     },
     "category-ai-!cn": {
       "path": "geo/geosite/category-ai-!cn.json",
-      "blob_sha": "bbf8e3b9f642a1b5e53f89aa74db36a1f434ee78",
-      "size": 6274,
+      "blob_sha": "f64061e605acae06021f28e24d37d18ea3d6aaf0",
+      "size": 6445,
       "kind": "category"
     },
     "category-ai-!cn@!cn": {
@@ -1807,14 +1813,14 @@
     },
     "category-ai-!cn@telemetry": {
       "path": "geo/geosite/category-ai-!cn@telemetry.json",
-      "blob_sha": "5ee0e7ab9483ac6f6880212e76745ed95316b6c7",
-      "size": 297,
+      "blob_sha": "d20e8bf5e656145aa18f8c1774a71db05514d5cb",
+      "size": 383,
       "kind": "attribute"
     },
     "category-ai-chat-!cn": {
       "path": "geo/geosite/category-ai-chat-!cn.json",
-      "blob_sha": "bbf8e3b9f642a1b5e53f89aa74db36a1f434ee78",
-      "size": 6274,
+      "blob_sha": "f64061e605acae06021f28e24d37d18ea3d6aaf0",
+      "size": 6445,
       "kind": "category"
     },
     "category-ai-chat-!cn@!cn": {
@@ -1831,14 +1837,14 @@
     },
     "category-ai-chat-!cn@telemetry": {
       "path": "geo/geosite/category-ai-chat-!cn@telemetry.json",
-      "blob_sha": "5ee0e7ab9483ac6f6880212e76745ed95316b6c7",
-      "size": 297,
+      "blob_sha": "d20e8bf5e656145aa18f8c1774a71db05514d5cb",
+      "size": 383,
       "kind": "attribute"
     },
     "category-ai-cn": {
       "path": "geo/geosite/category-ai-cn.json",
-      "blob_sha": "15754017c896b0eeb43fc4c00da7f8707f4378a0",
-      "size": 3191,
+      "blob_sha": "767d820ccff3ccd369fc38a69a2f787f3d4be567",
+      "size": 3216,
       "kind": "category"
     },
     "category-ai-ru": {
@@ -1855,19 +1861,19 @@
     },
     "category-anticensorship": {
       "path": "geo/geosite/category-anticensorship.json",
-      "blob_sha": "5612969b7dae83b17ecb40b3322f64abc24bc59a",
-      "size": 3243,
+      "blob_sha": "e2b00da4d36f2beea8ec286a13baeb59fa82579c",
+      "size": 3270,
       "kind": "category"
     },
     "category-antivirus": {
       "path": "geo/geosite/category-antivirus.json",
-      "blob_sha": "8016b2bf905f139ca50016b137d8e38234f85884",
+      "blob_sha": "64165b2446e220e48b544ae1df90b119b993f12a",
       "size": 5489,
       "kind": "category"
     },
     "category-antivirus@cn": {
       "path": "geo/geosite/category-antivirus@cn.json",
-      "blob_sha": "f2e29748024f1db290102274d313909a6d0a61b6",
+      "blob_sha": "76e09f4e77bede08c8ac7dd73799e2ff1cc5c807",
       "size": 3766,
       "kind": "attribute"
     },
@@ -1921,7 +1927,7 @@
     },
     "category-betting-ru": {
       "path": "geo/geosite/category-betting-ru.json",
-      "blob_sha": "005b83b272f4518dea46b17c05422942518a3aa3",
+      "blob_sha": "50d85de578fb096eb9de520ec18b8d89376d931e",
       "size": 409,
       "kind": "category"
     },
@@ -1939,25 +1945,25 @@
     },
     "category-browser-!cn": {
       "path": "geo/geosite/category-browser-!cn.json",
-      "blob_sha": "4d734b60ed56242b342391227ae8b16325b3393a",
+      "blob_sha": "7311c6c896476e626ed042f41cc0a282a0db596e",
       "size": 1087,
       "kind": "category"
     },
     "category-cas": {
       "path": "geo/geosite/category-cas.json",
-      "blob_sha": "a5f89679761b6d5280daae0145ea5a9cf34e02e0",
+      "blob_sha": "ab5056c6cd8193fda1c320521a4dcbf417c4b3fb",
       "size": 7410,
       "kind": "category"
     },
     "category-cas@cn": {
       "path": "geo/geosite/category-cas@cn.json",
-      "blob_sha": "45e4ce43f77a31b7fcfec6c0b907087173b7c933",
+      "blob_sha": "ae1b8e81b64af166bd3a230cd16c08f76bfcee0b",
       "size": 1007,
       "kind": "attribute"
     },
     "category-cdn-!cn": {
       "path": "geo/geosite/category-cdn-!cn.json",
-      "blob_sha": "b88b2483a7298125db268e5eec70bb9fb906a81e",
+      "blob_sha": "6366ace0a67ac5a1bff51b4d1a2cff7f9069e0f0",
       "size": 5276,
       "kind": "category"
     },
@@ -1999,7 +2005,7 @@
     },
     "category-communication": {
       "path": "geo/geosite/category-communication.json",
-      "blob_sha": "de6f04ac66b200422b878880ab6f50e1baa936b4",
+      "blob_sha": "5d43e4e9e0b70809d45ec2471da5363b177e98dd",
       "size": 4096,
       "kind": "category"
     },
@@ -2011,8 +2017,8 @@
     },
     "category-companies": {
       "path": "geo/geosite/category-companies.json",
-      "blob_sha": "a4d3d5c9db376593a32febb8ef437a42df556c82",
-      "size": 237056,
+      "blob_sha": "1276df25fcb1a9e6878ce8beefc09e65481b56a6",
+      "size": 237118,
       "kind": "category"
     },
     "category-companies@!cn": {
@@ -2023,19 +2029,19 @@
     },
     "category-companies@ads": {
       "path": "geo/geosite/category-companies@ads.json",
-      "blob_sha": "f6ff27cff69fe857ca7e5608f2e279bbcfc57599",
+      "blob_sha": "8e79e6e90cb878026b52d2ed11c15ba13b588142",
       "size": 6479,
       "kind": "attribute"
     },
     "category-companies@cn": {
       "path": "geo/geosite/category-companies@cn.json",
-      "blob_sha": "100dba939f1c7b7772c5192ef0bff8aed7cccec9",
+      "blob_sha": "77e2baca5c5d5d58e18d48a69f97273f3611c5fc",
       "size": 27795,
       "kind": "attribute"
     },
     "category-companies@telemetry": {
       "path": "geo/geosite/category-companies@telemetry.json",
-      "blob_sha": "4b0cdd44881f71a8880f0f3d0bc7c4788d07d9d5",
+      "blob_sha": "2854d2bf1dd27408566d8d601b5d900930e418a5",
       "size": 2213,
       "kind": "attribute"
     },
@@ -2053,7 +2059,7 @@
     },
     "category-cryptocurrency": {
       "path": "geo/geosite/category-cryptocurrency.json",
-      "blob_sha": "69673cc950daeb53190da628fa27cba1b1f3a58f",
+      "blob_sha": "3341dfe9b8a5e94f54df8939d6f0efd0f811d356",
       "size": 6000,
       "kind": "category"
     },
@@ -2071,19 +2077,19 @@
     },
     "category-dev": {
       "path": "geo/geosite/category-dev.json",
-      "blob_sha": "f4aa89eb68fd4cda6eca049ac82d372f89f38d84",
-      "size": 19436,
+      "blob_sha": "f8003a78521f7840d0160909a84f34425fb87def",
+      "size": 19544,
       "kind": "category"
     },
     "category-dev-cn": {
       "path": "geo/geosite/category-dev-cn.json",
-      "blob_sha": "e4a2980cf148bed351535e81cc7cfdc768d1208d",
+      "blob_sha": "cf48cfc372d1607c0874fb3b6c64199359f8d7f6",
       "size": 3388,
       "kind": "category"
     },
     "category-dev-cn@ads": {
       "path": "geo/geosite/category-dev-cn@ads.json",
-      "blob_sha": "cda40755a83bdb67f8a444e911805b7e8dab9d23",
+      "blob_sha": "ab9759ebeabba748e488a1eb0a6c8a5c438273c1",
       "size": 278,
       "kind": "attribute"
     },
@@ -2101,13 +2107,13 @@
     },
     "category-dev@cn": {
       "path": "geo/geosite/category-dev@cn.json",
-      "blob_sha": "682d2a8c1349b4cd8bad36aeafe869337d9d1048",
+      "blob_sha": "df1a5e137cd8259f00fa8a1388bfab8c2fae72b3",
       "size": 909,
       "kind": "attribute"
     },
     "category-dev@telemetry": {
       "path": "geo/geosite/category-dev@telemetry.json",
-      "blob_sha": "977396c6a61e2237dedbcb9ac5883671bacb4e7d",
+      "blob_sha": "21b0856a0b2bc32ce9013f35a1bbc967684e9e47",
       "size": 684,
       "kind": "attribute"
     },
@@ -2125,49 +2131,49 @@
     },
     "category-ecommerce": {
       "path": "geo/geosite/category-ecommerce.json",
-      "blob_sha": "7b6553b97957a9616378346311a7e21a9c82a152",
+      "blob_sha": "78c76559d010e96e09d2a39f9028c9e493e0d06c",
       "size": 33519,
       "kind": "category"
     },
     "category-ecommerce-ru": {
       "path": "geo/geosite/category-ecommerce-ru.json",
-      "blob_sha": "4001eb499ae261be2eed2d0dd366a1a0ec811ffd",
+      "blob_sha": "c5f677c36f47a57ace4dad4e058f66f0c44674ad",
       "size": 5208,
       "kind": "category"
     },
     "category-ecommerce-ru@ads": {
       "path": "geo/geosite/category-ecommerce-ru@ads.json",
-      "blob_sha": "c61ba7ea27e1198f2f23eaf4c869815374aeac7a",
+      "blob_sha": "d8e0c9048fa4e80cb1fde1bd65463195116aef10",
       "size": 1161,
       "kind": "attribute"
     },
     "category-ecommerce-ru@telemetry": {
       "path": "geo/geosite/category-ecommerce-ru@telemetry.json",
-      "blob_sha": "d5d9b6429ab3314762f8618f3bf3b60679011adb",
+      "blob_sha": "6666ccd455b25889662fd3dce6ad151ceb3b9386",
       "size": 304,
       "kind": "attribute"
     },
     "category-ecommerce@ads": {
       "path": "geo/geosite/category-ecommerce@ads.json",
-      "blob_sha": "be62193a094673eb50653628e4fcd12fc4a934eb",
+      "blob_sha": "44d84581bb317862cff8abc490fb3df407fa06fc",
       "size": 1450,
       "kind": "attribute"
     },
     "category-ecommerce@cn": {
       "path": "geo/geosite/category-ecommerce@cn.json",
-      "blob_sha": "7ea1346195af398ddc7c964175b465c198a48cc3",
+      "blob_sha": "df712470dc87ce556d4cefd5145e43a5bf62f056",
       "size": 2138,
       "kind": "attribute"
     },
     "category-ecommerce@telemetry": {
       "path": "geo/geosite/category-ecommerce@telemetry.json",
-      "blob_sha": "d5d9b6429ab3314762f8618f3bf3b60679011adb",
+      "blob_sha": "6666ccd455b25889662fd3dce6ad151ceb3b9386",
       "size": 304,
       "kind": "attribute"
     },
     "category-education-cn": {
       "path": "geo/geosite/category-education-cn.json",
-      "blob_sha": "c11a696d7fc706baea29bb2c5f8194fa9deaeedb",
+      "blob_sha": "f6203279697fecffbfd4d614fcd68dfaf05ed590",
       "size": 4832,
       "kind": "category"
     },
@@ -2203,7 +2209,7 @@
     },
     "category-enhance-gaming": {
       "path": "geo/geosite/category-enhance-gaming.json",
-      "blob_sha": "7a9c10b1117cf8e145e09a453b42af27259a9bc6",
+      "blob_sha": "32059e26da02485cdf824476efc4ec33d4ace12b",
       "size": 514,
       "kind": "category"
     },
@@ -2215,25 +2221,25 @@
     },
     "category-enterprise-query-platform-cn": {
       "path": "geo/geosite/category-enterprise-query-platform-cn.json",
-      "blob_sha": "a08e28d195ed341497f2636b10129dcf69d4b3c8",
+      "blob_sha": "19b2aa24ae894d3c2f677d1357745307e50aa07f",
       "size": 377,
       "kind": "category"
     },
     "category-entertainment": {
       "path": "geo/geosite/category-entertainment.json",
-      "blob_sha": "5d4171101a43008173160e4ecd6c4d9e7043854f",
+      "blob_sha": "802fd892aa6c5e2da0132c60af388e3c6e66b1ee",
       "size": 60582,
       "kind": "category"
     },
     "category-entertainment-cn": {
       "path": "geo/geosite/category-entertainment-cn.json",
-      "blob_sha": "e99f82ea484588cd24746866193b600d3329ed21",
+      "blob_sha": "8c9f65c6e1afcec8d3ccae0fb13db425a4ad3751",
       "size": 17183,
       "kind": "category"
     },
     "category-entertainment-cn@ads": {
       "path": "geo/geosite/category-entertainment-cn@ads.json",
-      "blob_sha": "24e2fa233aa113e9492249810be220f69f1e314f",
+      "blob_sha": "fb55185f1104a9921d290bf3ecae9d990527fbc4",
       "size": 1723,
       "kind": "attribute"
     },
@@ -2245,13 +2251,13 @@
     },
     "category-entertainment-cn@telemetry": {
       "path": "geo/geosite/category-entertainment-cn@telemetry.json",
-      "blob_sha": "a039d129e187044d0d5347ef39c3cb7322ff5988",
+      "blob_sha": "381f8789a7c010cf74d50c1ebd1b6e99f62ea688",
       "size": 705,
       "kind": "attribute"
     },
     "category-entertainment-ru": {
       "path": "geo/geosite/category-entertainment-ru.json",
-      "blob_sha": "19039e5e0d48873381b3cb79235df15e2188f339",
+      "blob_sha": "a852c96d959e6b59f9819561b74c65705c8b47c4",
       "size": 965,
       "kind": "category"
     },
@@ -2263,25 +2269,25 @@
     },
     "category-entertainment@ads": {
       "path": "geo/geosite/category-entertainment@ads.json",
-      "blob_sha": "2d1d6f927c64837126b9058c6ceed4fc95758f7b",
+      "blob_sha": "93a148374790e3262415b9b57476db4799d2d5c3",
       "size": 406,
       "kind": "attribute"
     },
     "category-entertainment@cn": {
       "path": "geo/geosite/category-entertainment@cn.json",
-      "blob_sha": "79c3a3d0007cce53b60ccfa8806c7fbffe8a781f",
+      "blob_sha": "952c5bc68323ede63966833a969b48e031345759",
       "size": 3723,
       "kind": "attribute"
     },
     "category-entertainment@telemetry": {
       "path": "geo/geosite/category-entertainment@telemetry.json",
-      "blob_sha": "f945398d5ff238d7799997dcfcffdc09dc05b16c",
+      "blob_sha": "20592b3e02cd189f575e8132abbd48c6e8703c14",
       "size": 240,
       "kind": "attribute"
     },
     "category-finance": {
       "path": "geo/geosite/category-finance.json",
-      "blob_sha": "a7c5af86eaed92f2301458415996e60ee6f85437",
+      "blob_sha": "0d0e200b32c68c51a289064817b9efb2fbaaebb5",
       "size": 16362,
       "kind": "category"
     },
@@ -2335,8 +2341,8 @@
     },
     "category-forums": {
       "path": "geo/geosite/category-forums.json",
-      "blob_sha": "4d2a4c1820a44e494a5bbd5791036e166df7d818",
-      "size": 2669,
+      "blob_sha": "ae998b9ef69b6e16a849d2cc4ca711cb1c54e52f",
+      "size": 2752,
       "kind": "category"
     },
     "category-forums-ir": {
@@ -2383,37 +2389,37 @@
     },
     "category-games": {
       "path": "geo/geosite/category-games.json",
-      "blob_sha": "1db083a1a329c5908aee7563c2d131291be2d557",
+      "blob_sha": "c5c02b522fc9946789a129295f60210b3b44151e",
       "size": 29254,
       "kind": "category"
     },
     "category-games-!cn": {
       "path": "geo/geosite/category-games-!cn.json",
-      "blob_sha": "70f97602886c306ae3cfad8e63ca5fdc6a2ff550",
+      "blob_sha": "f3dd3fd38bf08e5a1f5a26aad1918ede8c7e90a8",
       "size": 25083,
       "kind": "category"
     },
     "category-games-!cn@ads": {
       "path": "geo/geosite/category-games-!cn@ads.json",
-      "blob_sha": "30262ac4270de0fdb4ef4e04cbd4ea09e8701988",
+      "blob_sha": "cc00c6df5bf97708669a563fe8183e81016294fe",
       "size": 158,
       "kind": "attribute"
     },
     "category-games-!cn@cn": {
       "path": "geo/geosite/category-games-!cn@cn.json",
-      "blob_sha": "0ac01754ef4dda7c782e3b6ab6b10fe3fe254969",
+      "blob_sha": "72a5dc41fd0bcf67e96324c98ff468075d442314",
       "size": 1353,
       "kind": "attribute"
     },
     "category-games-!cn@telemetry": {
       "path": "geo/geosite/category-games-!cn@telemetry.json",
-      "blob_sha": "63b28f4d903398b2f30a0ba65bd33b6fa7e35af5",
+      "blob_sha": "5f1f21295638fad63aa1e07e0d2d737b3e16a3e0",
       "size": 191,
       "kind": "attribute"
     },
     "category-games-cn": {
       "path": "geo/geosite/category-games-cn.json",
-      "blob_sha": "ce44f222b8c4c2bbe16de46715422a744f390dad",
+      "blob_sha": "c8021217c6b62148892896940c97baaa052e2f06",
       "size": 4292,
       "kind": "category"
     },
@@ -2437,19 +2443,19 @@
     },
     "category-games@ads": {
       "path": "geo/geosite/category-games@ads.json",
-      "blob_sha": "b170c9ab75e743f1a9f188d6a1c93fb3c8346783",
+      "blob_sha": "cbeac3a50787f5e3391304fb8b56752bdec6394a",
       "size": 191,
       "kind": "attribute"
     },
     "category-games@cn": {
       "path": "geo/geosite/category-games@cn.json",
-      "blob_sha": "52ee183a594c371d00bb5538662639877e0be61c",
+      "blob_sha": "8cfebebc25ec1d6f2a5461111d2d45bb8c9bcf41",
       "size": 1394,
       "kind": "attribute"
     },
     "category-games@telemetry": {
       "path": "geo/geosite/category-games@telemetry.json",
-      "blob_sha": "e090b318794c6c889e1ed57ef5b5bbc5abf05446",
+      "blob_sha": "d0513af33afdc977b9da57f5750dd3c3ed057fce",
       "size": 224,
       "kind": "attribute"
     },
@@ -2515,13 +2521,13 @@
     },
     "category-ir": {
       "path": "geo/geosite/category-ir.json",
-      "blob_sha": "261e2e839c6dae90a12a4e4df1561b9b9e2277a0",
+      "blob_sha": "6b02fa8c856207a08d4116d2e62399b78fb13058",
       "size": 4782,
       "kind": "category"
     },
     "category-logistics-cn": {
       "path": "geo/geosite/category-logistics-cn.json",
-      "blob_sha": "da5cbe1a3de8fb571951229e69d9c69ae891f04b",
+      "blob_sha": "7938a7193b6c3f93fe13134791fb9347afb13bda",
       "size": 3859,
       "kind": "category"
     },
@@ -2539,19 +2545,19 @@
     },
     "category-media": {
       "path": "geo/geosite/category-media.json",
-      "blob_sha": "97f50e0903706cb2c3365a8f8aa5212283dcb799",
+      "blob_sha": "d514bad73f0199a356ce5eb92d07f50c4842131a",
       "size": 41626,
       "kind": "category"
     },
     "category-media-cn": {
       "path": "geo/geosite/category-media-cn.json",
-      "blob_sha": "dd2c9c322d8252975145cf7ddca1658e0089917d",
+      "blob_sha": "a075e5be21791b209545ae59aa5d441a94a472ef",
       "size": 10768,
       "kind": "category"
     },
     "category-media-cn@ads": {
       "path": "geo/geosite/category-media-cn@ads.json",
-      "blob_sha": "09581be21230dd8023aa41c58b78cf9a03a2e041",
+      "blob_sha": "357554da2f8683a860e47ba9aa9ed9eca20e1663",
       "size": 546,
       "kind": "attribute"
     },
@@ -2563,7 +2569,7 @@
     },
     "category-media-ru": {
       "path": "geo/geosite/category-media-ru.json",
-      "blob_sha": "19bfc69dccb7cd3b21ffd3a86764cc099c28ffdf",
+      "blob_sha": "7fecc0f37996b433600a9c338ef68d0f3599fac5",
       "size": 3648,
       "kind": "category"
     },
@@ -2575,7 +2581,7 @@
     },
     "category-media@cn": {
       "path": "geo/geosite/category-media@cn.json",
-      "blob_sha": "38241c0efb35789ddf03032eba716ee6c50df86a",
+      "blob_sha": "607dccf568247b637c8380da993ae546ccfbfc93",
       "size": 216,
       "kind": "attribute"
     },
@@ -2599,7 +2605,7 @@
     },
     "category-netdisk-!cn": {
       "path": "geo/geosite/category-netdisk-!cn.json",
-      "blob_sha": "1cbad18ffdbb139533bc2fc13641e5f7398b4f5e",
+      "blob_sha": "9b500c991e343ce68f7ddd5f79477cec579c26ec",
       "size": 1919,
       "kind": "category"
     },
@@ -2617,7 +2623,7 @@
     },
     "category-netdisk-cn": {
       "path": "geo/geosite/category-netdisk-cn.json",
-      "blob_sha": "c1dfaaedeb27849d5e3f92aff4ae3c182d8acbaa",
+      "blob_sha": "b000b9da007dadb34902d70d21d2f77c3a4a640f",
       "size": 2164,
       "kind": "category"
     },
@@ -2683,7 +2689,7 @@
     },
     "category-orgs": {
       "path": "geo/geosite/category-orgs.json",
-      "blob_sha": "e75de53deed704f270fc42d0240507489c5f20f3",
+      "blob_sha": "ad6f7dc9bc70c136560676af2cc86b78cfc8b380",
       "size": 3426,
       "kind": "category"
     },
@@ -2713,7 +2719,7 @@
     },
     "category-porn": {
       "path": "geo/geosite/category-porn.json",
-      "blob_sha": "51f59510a24891fc00bac28e802852817d171751",
+      "blob_sha": "f2cd73fdbd8c00eb74d39ef536236c8fbc1e9f0c",
       "size": 171831,
       "kind": "category"
     },
@@ -2767,7 +2773,7 @@
     },
     "category-retail-ru": {
       "path": "geo/geosite/category-retail-ru.json",
-      "blob_sha": "40d32d023a46a523dd554ec0a87b74dfbf744164",
+      "blob_sha": "d64c2416a888a774aebb68c87d7dbd4a6ce14bf5",
       "size": 1911,
       "kind": "category"
     },
@@ -2785,43 +2791,43 @@
     },
     "category-ru": {
       "path": "geo/geosite/category-ru.json",
-      "blob_sha": "7434aebf9fff5a8a898b101f1468c389162b3971",
-      "size": 29975,
+      "blob_sha": "1e9b6052d5447f0ba507b09494bbef5c7cd779dc",
+      "size": 30023,
       "kind": "category"
     },
     "category-ru@ads": {
       "path": "geo/geosite/category-ru@ads.json",
-      "blob_sha": "7b8189fdd9db68a0b5ad687ed325e86a73d362f7",
+      "blob_sha": "6ee9cd5cb901adf2e2decb938b2b4b6d0dbf5d05",
       "size": 5518,
       "kind": "attribute"
     },
     "category-ru@cn": {
       "path": "geo/geosite/category-ru@cn.json",
-      "blob_sha": "2b9ef0b16c8b56105224f1fc4a481a83aa0b8d1f",
+      "blob_sha": "9a7f1a78367ad079e3e00234a1224a17d2c62e0a",
       "size": 3767,
       "kind": "attribute"
     },
     "category-ru@telemetry": {
       "path": "geo/geosite/category-ru@telemetry.json",
-      "blob_sha": "0751bbb46496a386078261a868f07abf54d18868",
+      "blob_sha": "ce7c95722caf317fef45a73071f9038bc0c11832",
       "size": 1671,
       "kind": "attribute"
     },
     "category-scholar-!cn": {
       "path": "geo/geosite/category-scholar-!cn.json",
-      "blob_sha": "0ee7573e8310380a8884d1d73595318e56134e36",
+      "blob_sha": "30484fcccb277c5852f7de275d49890a2cea63f3",
       "size": 12530,
       "kind": "category"
     },
     "category-scholar-cn": {
       "path": "geo/geosite/category-scholar-cn.json",
-      "blob_sha": "83d5862190cd594f7781cf87b3df2f1b41c2a818",
+      "blob_sha": "866c4b9232aabaf6bad59f99868b7e608a2c7f0c",
       "size": 2322,
       "kind": "category"
     },
     "category-scholar-hk": {
       "path": "geo/geosite/category-scholar-hk.json",
-      "blob_sha": "92698a62c5f32a879fbeb092ad9f52771b1934e5",
+      "blob_sha": "73a6cdfe7a133a6ea795192a408f83440168f586",
       "size": 773,
       "kind": "category"
     },
@@ -2851,13 +2857,13 @@
     },
     "category-social-media-!cn": {
       "path": "geo/geosite/category-social-media-!cn.json",
-      "blob_sha": "862f5d4433a4861e0b22d9d74a118c778934b8ac",
+      "blob_sha": "6d80ed326fcc1adbcaf02172b1f369b6f6d3c77c",
       "size": 16781,
       "kind": "category"
     },
     "category-social-media-!cn@ads": {
       "path": "geo/geosite/category-social-media-!cn@ads.json",
-      "blob_sha": "c4b58e38d9a6103bb10decd8a8718c4431b66fa9",
+      "blob_sha": "c9a7e2e059d8c3b1a66150dcdcd34b433a869bbd",
       "size": 662,
       "kind": "attribute"
     },
@@ -2875,7 +2881,7 @@
     },
     "category-social-media-cn": {
       "path": "geo/geosite/category-social-media-cn.json",
-      "blob_sha": "9427dc8e03c3d56fe9c4199d9bec234205411170",
+      "blob_sha": "49536d931f8418c8cb26b340c73e556c082a20e5",
       "size": 1334,
       "kind": "category"
     },
@@ -2899,8 +2905,8 @@
     },
     "category-speedtest": {
       "path": "geo/geosite/category-speedtest.json",
-      "blob_sha": "ccd82c1ec0ae9543f58a1d03618354a0acf10c9a",
-      "size": 9454,
+      "blob_sha": "b300b0292ff0ef959a678090a6f4e9cbc5976d39",
+      "size": 9479,
       "kind": "category"
     },
     "category-speedtest@!cn": {
@@ -2935,7 +2941,7 @@
     },
     "category-tech-media": {
       "path": "geo/geosite/category-tech-media.json",
-      "blob_sha": "15b855e788e7df1217721ca301f8965515bd9e7a",
+      "blob_sha": "796c3b7cf85b5916d97336e4944a0ec55dabd7ba",
       "size": 754,
       "kind": "category"
     },
@@ -2953,13 +2959,13 @@
     },
     "category-telemetry": {
       "path": "geo/geosite/category-telemetry.json",
-      "blob_sha": "7bbaef1efee2ef739db310f08cb63e5b6d4f96f1",
+      "blob_sha": "3dde57b7cb288cb808ba813a68ace22b57c73148",
       "size": 9920,
       "kind": "category"
     },
     "category-telemetry@ads": {
       "path": "geo/geosite/category-telemetry@ads.json",
-      "blob_sha": "34bc0ecc7885ee67b1f3dda687a010e08e07f169",
+      "blob_sha": "4228a6e3b414573742012937b7cb98b54838f5e3",
       "size": 7893,
       "kind": "attribute"
     },
@@ -2971,7 +2977,7 @@
     },
     "category-telemetry@telemetry": {
       "path": "geo/geosite/category-telemetry@telemetry.json",
-      "blob_sha": "7bbaef1efee2ef739db310f08cb63e5b6d4f96f1",
+      "blob_sha": "3dde57b7cb288cb808ba813a68ace22b57c73148",
       "size": 9920,
       "kind": "attribute"
     },
@@ -3007,7 +3013,7 @@
     },
     "category-vpnservices": {
       "path": "geo/geosite/category-vpnservices.json",
-      "blob_sha": "0a588666b80e1b73c606f0d0146376016ba51c5c",
+      "blob_sha": "2f94f33c3abae5c9d286e6e576abfea535339223",
       "size": 1736,
       "kind": "category"
     },
@@ -3865,7 +3871,7 @@
     },
     "digicert": {
       "path": "geo/geosite/digicert.json",
-      "blob_sha": "48a9439e5890d574bd30304598e13d0bb10a5448",
+      "blob_sha": "cb6cc641bd7e9f369ac9746d988862df54349b2b",
       "size": 2583,
       "kind": "service-candidate"
     },
@@ -3925,7 +3931,7 @@
     },
     "disney": {
       "path": "geo/geosite/disney.json",
-      "blob_sha": "ebcc8af9d6f8280e079b6e68719e2f45b92140d4",
+      "blob_sha": "7101998ad960a72a1b907072a3a8f1c2dcb79e57",
       "size": 6314,
       "kind": "service-candidate"
     },
@@ -4939,25 +4945,25 @@
     },
     "geolocation-!cn": {
       "path": "geo/geosite/geolocation-!cn.json",
-      "blob_sha": "ab233fb7ec6bdd8507a5f68c3e208954576c372c",
-      "size": 711989,
+      "blob_sha": "5ad9f5b83b505f48e4da2e08e7b9754df2e8adec",
+      "size": 712289,
       "kind": "group"
     },
     "geolocation-cn": {
       "path": "geo/geosite/geolocation-cn.json",
-      "blob_sha": "18c826a28425ebcfc5de3ec4e1c8e18433ca726b",
-      "size": 127018,
+      "blob_sha": "6bb0f6c2aa5595e75bfe892887b9dff603eb2d4e",
+      "size": 127043,
       "kind": "group"
     },
     "geolocation-cn@cn": {
       "path": "geo/geosite/geolocation-cn@cn.json",
-      "blob_sha": "80dd8cd4dc16dc06b3f60966fc3cfd7b0d8a678e",
+      "blob_sha": "1c50f8848e5fbb8e41ccea64eff10a59b682269b",
       "size": 2274,
       "kind": "attribute"
     },
     "geolocation-cn@telemetry": {
       "path": "geo/geosite/geolocation-cn@telemetry.json",
-      "blob_sha": "69029b7b128a360ef68e9e55e702cbcc589e789a",
+      "blob_sha": "f448ddb3be866da30baa3b5928cccee7b3db1306",
       "size": 481,
       "kind": "attribute"
     },
@@ -5035,14 +5041,14 @@
     },
     "github": {
       "path": "geo/geosite/github.json",
-      "blob_sha": "0f95fc5461a9a4a29d4016ec9e20bb94ac82cdc8",
-      "size": 2699,
+      "blob_sha": "5efc06863563eaab410b0feb5eff2d8ad2ba2fd4",
+      "size": 2761,
       "kind": "service-candidate"
     },
     "github-copilot": {
       "path": "geo/geosite/github-copilot.json",
-      "blob_sha": "ea95c14ac5c3fffc8c9375ed493a7e3426a02eae",
-      "size": 375,
+      "blob_sha": "d384bda8769bf6e6a5f12dd9cbef1bc3f9d4ff5d",
+      "size": 437,
       "kind": "service-candidate"
     },
     "github-copilot@telemetry": {
@@ -5167,7 +5173,7 @@
     },
     "google": {
       "path": "geo/geosite/google.json",
-      "blob_sha": "e71c1f8e6cd542310bca563dcb87a29e0a6b7b95",
+      "blob_sha": "c855f74bcb3d85c5cd3ca7d2554aca719902b740",
       "size": 28945,
       "kind": "service-candidate"
     },
@@ -5245,7 +5251,7 @@
     },
     "google@cn": {
       "path": "geo/geosite/google@cn.json",
-      "blob_sha": "5ef45072327e6c3d5313be0b7b30a37b72e6f3b3",
+      "blob_sha": "dbdea6946764c296b0ec34878f6e2a2c31e28edf",
       "size": 4272,
       "kind": "attribute"
     },
@@ -5279,6 +5285,12 @@
       "size": 122,
       "kind": "service-candidate"
     },
+    "grafanalabs": {
+      "path": "geo/geosite/grafanalabs.json",
+      "blob_sha": "d40b317eaf11e18ecbb344ba5e57f9679998eef9",
+      "size": 127,
+      "kind": "service-candidate"
+    },
     "grapheneos": {
       "path": "geo/geosite/grapheneos.json",
       "blob_sha": "29624f16f9eb4a76201da490e63a97a601369014",
@@ -5293,8 +5305,8 @@
     },
     "greatfire": {
       "path": "geo/geosite/greatfire.json",
-      "blob_sha": "0326d33d03fa755214bc729d62180f702120ec9f",
-      "size": 388,
+      "blob_sha": "dedda923a3644fc4f84e7c86de9c50c15f4592fc",
+      "size": 415,
       "kind": "service-candidate"
     },
     "gree": {
@@ -6457,7 +6469,7 @@
     },
     "kingsoft": {
       "path": "geo/geosite/kingsoft.json",
-      "blob_sha": "0a5f8c309ff873a7d83cce0f693c5f3b12337ee1",
+      "blob_sha": "833b5fa201304469ef031f98b4fa216c4c0a1f52",
       "size": 1105,
       "kind": "service-candidate"
     },
@@ -7213,7 +7225,7 @@
     },
     "meta": {
       "path": "geo/geosite/meta.json",
-      "blob_sha": "8b8676edff7d1e9143c78e154d711b7253093dca",
+      "blob_sha": "488abe629a169a0025caf30432cb7844bdcbd448",
       "size": 15065,
       "kind": "service-candidate"
     },
@@ -7249,8 +7261,8 @@
     },
     "microsoft": {
       "path": "geo/geosite/microsoft.json",
-      "blob_sha": "8ff472f7a78973473d2df16c7c17ab8960a686a8",
-      "size": 22898,
+      "blob_sha": "689bfe313fe479fb1d859e3b89e2647c4a015d9f",
+      "size": 22960,
       "kind": "service-candidate"
     },
     "microsoft-dev": {
@@ -7303,7 +7315,7 @@
     },
     "mihoyo": {
       "path": "geo/geosite/mihoyo.json",
-      "blob_sha": "6faeb6e2c5857c0227edbe258951d60c89433aa1",
+      "blob_sha": "af256d9d4256e3b7940eaed5c67b453cd53455d4",
       "size": 775,
       "kind": "service-candidate"
     },
@@ -7333,7 +7345,7 @@
     },
     "mihoyo@ads": {
       "path": "geo/geosite/mihoyo@ads.json",
-      "blob_sha": "2c50e6f1ceeb344028c5a4cfd00eb9c226367c5a",
+      "blob_sha": "ea54668f3ac8952fb25697221eb1887459921b47",
       "size": 153,
       "kind": "attribute"
     },
@@ -7345,7 +7357,7 @@
     },
     "mihoyo@telemetry": {
       "path": "geo/geosite/mihoyo@telemetry.json",
-      "blob_sha": "2c50e6f1ceeb344028c5a4cfd00eb9c226367c5a",
+      "blob_sha": "ea54668f3ac8952fb25697221eb1887459921b47",
       "size": 153,
       "kind": "attribute"
     },
@@ -7375,13 +7387,13 @@
     },
     "mindgeek": {
       "path": "geo/geosite/mindgeek.json",
-      "blob_sha": "0ac1100fa9271300f71001121438af7ed56f6a74",
+      "blob_sha": "45e526feeceef2c2c8ad832d5479b4146d5159c6",
       "size": 1245,
       "kind": "service-candidate"
     },
     "mindgeek-porn": {
       "path": "geo/geosite/mindgeek-porn.json",
-      "blob_sha": "0a2d4aa1d7c1fb5e77b8aa48fa89736f48cb5c8f",
+      "blob_sha": "48b170c039ca3cffb1e2771bd8ca425a61d41d31",
       "size": 1221,
       "kind": "service-candidate"
     },
@@ -7813,7 +7825,7 @@
     },
     "newscorp": {
       "path": "geo/geosite/newscorp.json",
-      "blob_sha": "c2afb2d032a6296c50e0fb0911b17ea457304949",
+      "blob_sha": "7eb18dbde234d874121b1d3127cb906d0ef11345",
       "size": 4279,
       "kind": "service-candidate"
     },
@@ -8197,7 +8209,7 @@
     },
     "openjsfoundation": {
       "path": "geo/geosite/openjsfoundation.json",
-      "blob_sha": "82903f5fe427bff8553e3097042416a7e6b2fd93",
+      "blob_sha": "e6281ee7349d052f4d70811d8c73e1fadb26ddf7",
       "size": 431,
       "kind": "service-candidate"
     },
@@ -8977,13 +8989,13 @@
     },
     "rb": {
       "path": "geo/geosite/rb.json",
-      "blob_sha": "aa49e7028be88c6959afd7f48194c36c4887cd6f",
+      "blob_sha": "2b0359b398bd3d5b65c42c8692bbecbe51014b31",
       "size": 11112,
       "kind": "service-candidate"
     },
     "rb@cn": {
       "path": "geo/geosite/rb@cn.json",
-      "blob_sha": "d19291f5c56960411404aff7646932a9bfeb5439",
+      "blob_sha": "c98f89a72190405b588bc1b24b29a7c91377c5b9",
       "size": 797,
       "kind": "attribute"
     },
@@ -9283,7 +9295,7 @@
     },
     "sber": {
       "path": "geo/geosite/sber.json",
-      "blob_sha": "a030897815d4b8be86ec98c76e7bd06b4e4014d7",
+      "blob_sha": "5b024ff5a4a2ecac79c8da6d104e8d84c48c5d66",
       "size": 2528,
       "kind": "service-candidate"
     },
@@ -9739,7 +9751,7 @@
     },
     "sony": {
       "path": "geo/geosite/sony.json",
-      "blob_sha": "19a35a611976200f9f62edcea0da9b396140865c",
+      "blob_sha": "02af74f3a687eb2004c906c9f2baa801d3b49ca0",
       "size": 2939,
       "kind": "service-candidate"
     },
@@ -10297,13 +10309,13 @@
     },
     "tencent": {
       "path": "geo/geosite/tencent.json",
-      "blob_sha": "032b9570aada14268430bc5aa8e014f0cafc5427",
+      "blob_sha": "65ba8bd54f309c9e6f0884a2916dc7f174e235d8",
       "size": 17783,
       "kind": "service-candidate"
     },
     "tencent-dev": {
       "path": "geo/geosite/tencent-dev.json",
-      "blob_sha": "f8535dd648169de3c82693eb5ea8cf8136bcfb29",
+      "blob_sha": "fb0aaf3019dcdafbf48e6c0dca1691d38cdf4042",
       "size": 485,
       "kind": "service-candidate"
     },
@@ -10351,7 +10363,7 @@
     },
     "tencent@!cn": {
       "path": "geo/geosite/tencent@!cn.json",
-      "blob_sha": "d4e0711d003dbd37afbdcb46ec50509e348beffb",
+      "blob_sha": "f05f2a18f62dae52a73e900b6054df2121fe9bc2",
       "size": 2588,
       "kind": "attribute"
     },
@@ -10453,7 +10465,7 @@
     },
     "thelinuxfoundation": {
       "path": "geo/geosite/thelinuxfoundation.json",
-      "blob_sha": "0216f62f373e133925963357d5888b94265e6db1",
+      "blob_sha": "bb1b34b72cf7a7d7527fb6bba8024488f840f748",
       "size": 532,
       "kind": "service-candidate"
     },
@@ -11155,8 +11167,8 @@
     },
     "vokino": {
       "path": "geo/geosite/vokino.json",
-      "blob_sha": "67ce4fceef214c9a3407c55671986c0509d4c7e7",
-      "size": 676,
+      "blob_sha": "14b8e12d2f8c89b5ad2945a2c01df0f7071d300a",
+      "size": 701,
       "kind": "service-candidate"
     },
     "volcengine": {
@@ -11551,8 +11563,8 @@
     },
     "x": {
       "path": "geo/geosite/x.json",
-      "blob_sha": "6e43556becb6dce9db7f81625a1f2997a1d146a7",
-      "size": 729,
+      "blob_sha": "7902a5b5f3222690f94d582924cb1a4c05075611",
+      "size": 752,
       "kind": "service-candidate"
     },
     "x5": {
@@ -11581,8 +11593,8 @@
     },
     "xai": {
       "path": "geo/geosite/xai.json",
-      "blob_sha": "cc15f95321fd3b60bc1d9ffb00a80c0d8be648bb",
-      "size": 165,
+      "blob_sha": "799145fbf2193ebc1574a4832134bc64c7eeb1e5",
+      "size": 188,
       "kind": "service-candidate"
     },
     "xbox": {
@@ -12141,6 +12153,8 @@
   "definitions": {
     "anthropic": {
       "exact": [
+        "http-intake.logs.us5.datadoghq.com",
+        "o1158394.ingest.us.sentry.io",
         "servd-anthropic-website.b-cdn.net"
       ],
       "suffix": [
@@ -12165,9 +12179,9 @@
       ],
       "unsupported": [],
       "partial": false,
-      "source_blob": "9f67ea8217630622d097cc43ee990d02d2089ae0",
-      "sha256": "bb91dd7ed78a0d33ab7ee90964f73564ff08e081557171d7aa559e97d729de89",
-      "raw": "{\n  \"version\": 2,\n  \"rules\": [\n    {\n      \"domain\": \"servd-anthropic-website.b-cdn.net\",\n      \"domain_suffix\": [\n        \"ant.dev\",\n        \"anthropic.com\",\n        \"anthropic.team\",\n        \"antspace.dev\",\n        \"chatbotclaude.com\",\n        \"clau.de\",\n        \"claude.ai\",\n        \"claude.app\",\n        \"claude.com\",\n        \"claude.dev\",\n        \"claude.new\",\n        \"claude.site\",\n        \"claudeacademy.com\",\n        \"claudemcpclient.com\",\n        \"claudemcpcontent.com\",\n        \"claudepages.dev\",\n        \"claudestudio.com\",\n        \"claudeusercontent.com\"\n      ]\n    }\n  ]\n}\n"
+      "source_blob": "ae8c06426572dbca821db8935cc2f28ef6d9c79a",
+      "sha256": "d956bc8d925a5f393df587163149328a2f671569e0bc31c84d9a34da283b118d",
+      "raw": "{\n  \"version\": 2,\n  \"rules\": [\n    {\n      \"domain\": [\n        \"servd-anthropic-website.b-cdn.net\",\n        \"http-intake.logs.us5.datadoghq.com\",\n        \"o1158394.ingest.us.sentry.io\"\n      ],\n      \"domain_suffix\": [\n        \"ant.dev\",\n        \"anthropic.com\",\n        \"anthropic.team\",\n        \"antspace.dev\",\n        \"chatbotclaude.com\",\n        \"clau.de\",\n        \"claude.ai\",\n        \"claude.app\",\n        \"claude.com\",\n        \"claude.dev\",\n        \"claude.new\",\n        \"claude.site\",\n        \"claudeacademy.com\",\n        \"claudemcpclient.com\",\n        \"claudemcpcontent.com\",\n        \"claudepages.dev\",\n        \"claudestudio.com\",\n        \"claudeusercontent.com\"\n      ]\n    }\n  ]\n}\n"
     },
     "openai": {
       "exact": [
