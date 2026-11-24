@@ -59,6 +59,12 @@ native policy/relay, но не заменяет проверку образа AG
 На дату аудита: `matches`, `fa1115bc…`, **2510 rules, 114 exact + 1141 suffix**.
 Следующий refresh может сменить поколение; actual следует читать заново.
 
+Генератор задаёт `timeout tunnel 10m` только в HTTPS origin backends. Это
+максимальная пауза без трафика после установления TCP-туннеля, а не срок жизни
+соединения или загрузки чата. Начальные `timeout connect 5s`, `timeout client 60s`
+и `timeout server 60s` сохранены; DoT backend этот tunnel timeout не получает.
+Штатные apply/refresh сохраняют настройку при использовании нового source release.
+
 AGH/relay pinned references находятся в [image lock](../config/images.lock.json)
 и effective Compose; сверять также running image ID/RepoDigest. `edge` в lock —
 образ лабораторного fixture, не инструкция обновления общего Traefik, где сейчас

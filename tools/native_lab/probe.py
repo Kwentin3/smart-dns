@@ -199,6 +199,12 @@ def management_probe(out, docker, project):
         def cli(*arguments, environment=None, expected_failure=False):
             nonlocal stage
             stage = arguments[0]
+            refresh_before = None
+            if arguments[0] == "refresh" and not expected_failure:
+                relay = owned("relay")
+                refresh_before = ({key: deployment[key].read_bytes() for key in product.INPUT_NAMES if key in deployment},
+                                  api("/control/filtering/status")["user_rules"],
+                                  (relay["Id"], relay["State"]["StartedAt"]))
             number = len(report["operations"])
             stdout_path = out / ("management-" + str(number) + ".stdout.private.json")
             stderr_path = out / ("management-" + str(number) + ".stderr.private.log")
@@ -220,6 +226,16 @@ def management_probe(out, docker, project):
             if expected_failure:
                 assert result != 0 and value["status"] == "failed"
                 assert value["error"] == "source refresh failed; accepted inputs and runtime unchanged", "outage did not reach source transport owner"
+            elif arguments[0] == "refresh" and value.get("status") == "review-required":
+                # A frozen fixture may predate upstream removals. Native review
+                # must preserve the accepted state, not silently accept them.
+                assert result == 1 and value["accepted_unchanged"] and value["runtime_unchanged"]
+                assert value["review_reasons"]
+                canonical, native_rules, identity = refresh_before
+                assert all(deployment[key].read_bytes() == data for key, data in canonical.items())
+                assert api("/control/filtering/status")["user_rules"] == native_rules
+                relay = owned("relay")
+                assert (relay["Id"], relay["State"]["StartedAt"]) == identity
             else:
                 assert result == 0, "native product CLI failed; inspect private stdout"
                 assert value["status"] == "matches", "native product CLI did not reach matches"

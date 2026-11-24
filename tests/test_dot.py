@@ -40,6 +40,27 @@ class NativeDotConfigTests(unittest.TestCase):
     def config(self, settings):
         return compile_config({"domains": ["chatgpt.com"], "excluded_zones": []}, settings, {"chatgpt.com": "1.1.1.1"})["agh-conf/AdGuardHome.yaml"]
 
+    def test_long_idle_timeout_is_limited_to_website_tunnels(self):
+        rules = {"domains": ["chatgpt.com", "claude.ai"], "excluded_zones": []}
+        settings = dict(self.settings, dot=self.dot)
+        for origins in ({"chatgpt.com": "1.1.1.1", "claude.ai": "8.8.8.8"}, None):
+            with self.subTest(dynamic=origins is None):
+                effective = dict(settings, origin_dns=["9.9.9.9"]) if origins is None else settings
+                config = compile_config(rules, effective, origins)["haproxy.cfg"]
+                sections = {}
+                for line in config.splitlines():
+                    if line and not line.startswith((" ", "#")):
+                        section = line
+                        sections[section] = []
+                    elif line.startswith(" "):
+                        sections[section].append(line.strip())
+                self.assertIn("timeout connect 5s", sections["defaults"])
+                self.assertIn("timeout client 60s", sections["defaults"])
+                self.assertIn("timeout server 60s", sections["defaults"])
+                for name, directives in sections.items():
+                    tunnel = [d for d in directives if d.startswith("timeout tunnel ")]
+                    self.assertEqual(tunnel, ["timeout tunnel 10m"] if name.startswith("backend origin_") else [])
+
     def test_optional_dot_enables_native_encryption_without_changing_admission(self):
         before = self.config(self.settings)
         self.assertFalse(before["tls"]["enabled"])
