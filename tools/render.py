@@ -274,7 +274,7 @@ def compile_config(rules, settings, origins=None):
     else:
         hap += ["  tcp-request content reject"]
     if dynamic_origin and (domains or suffixes):
-        hap += ["  default_backend origin_dynamic", "backend origin_dynamic", "  server checked 0.0.0.0:0"]
+        hap += ["  default_backend origin_dynamic", "backend origin_dynamic", "  timeout tunnel 10m", "  server checked 0.0.0.0:0"]
     else:
         for i, d in enumerate(domains):
             hap += [f"  use_backend origin_{i} if {{ req.ssl_sni,lower -m str {d} }}"]
@@ -288,7 +288,7 @@ def compile_config(rules, settings, origins=None):
                 "  hold nx 1s", "  hold timeout 1s", "  hold other 1s", "  hold refused 1s", "  hold obsolete 0s"]
     else:
         for i, d in enumerate(domains):
-            hap += [f"backend origin_{i}", f"  # {d}; no runtime resolver, no dynamic destination", f"  server fixed {origins[d]}:443"]
+            hap += [f"backend origin_{i}", "  timeout tunnel 10m", f"  # {d}; no runtime resolver, no dynamic destination", f"  server fixed {origins[d]}:443"]
     if dot is not None:
         # Dedicated fixed infrastructure backend; it is not client-selected SNI
         # forwarding. Docker DNS discovers AGH only, origin DNS is unaffected.
